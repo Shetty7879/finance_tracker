@@ -76,14 +76,30 @@ export function AuthProvider({ children }) {
   };
 
   // Sign Out
+  // Immediately resets local auth state so authenticated UI does not remain visible
   const signOut = async () => {
     setAuthError(null);
-    if (!supabase) return;
 
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      setAuthError(error.message);
-      throw error;
+    // 1. Instantly reset local state
+    setUser(null);
+    setSession(null);
+
+    // 2. Terminate session on Supabase server
+    try {
+      if (supabase) {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('Supabase signOut error:', error);
+          setAuthError(error.message);
+          throw error;
+        }
+      }
+    } catch (err) {
+      // Ensure user and session remain null even if network request fails
+      setUser(null);
+      setSession(null);
+      setAuthError(err.message || 'Failed to sign out completely from server.');
+      throw err;
     }
   };
 

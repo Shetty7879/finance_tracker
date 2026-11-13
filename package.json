@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node test_balance_logic.js"
+    "test": "node test_balance_logic.js",
+    "test:live": "node test_live_e2e.js",
+    "verify:supabase": "node verify_supabase_live.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

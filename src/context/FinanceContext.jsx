@@ -197,10 +197,20 @@ export function FinanceProvider({ children }) {
   }, [expenses]);
 
   // 3. Monthly Expenses = Sum of expenses for the current calendar month
+  // Uses local client calendar year and month to avoid UTC boundary shifts
   const thisMonthExpenses = useMemo(() => {
-    const currentYearMonth = new Date().toISOString().slice(0, 7); // e.g. "2026-11"
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentYearMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
     return expenses
-      .filter((exp) => exp.date && exp.date.startsWith(currentYearMonth))
+      .filter((exp) => {
+        if (!exp.date) return false;
+        // Parse date directly without UTC conversion
+        // Works for both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss'
+        return exp.date.startsWith(currentYearMonthPrefix);
+      })
       .reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   }, [expenses]);
 

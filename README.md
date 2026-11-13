@@ -48,10 +48,10 @@ FridayTrack is a modern, high-performance personal finance & expense tracker bui
 ## 🛠️ Supabase Setup Instructions
 
 ### 1. Execute SQL Migration in Supabase
-1. Open your project on [supabase.com](https://supabase.com/dashboard).
-2. Navigate to **SQL Editor** > **New Query**.
-3. Copy and run the entire script from `supabase_schema.sql` (or `supabase/migrations/20261113_init.sql`).
-   - This sets up `accounts`, `expenses`, RLS policies, the atomic RPC functions (`create_expense`, `delete_expense`), and Realtime publications.
+- **Canonical Migration File**: `supabase/migrations/20261113_init.sql` (use with Supabase CLI: `supabase db push` or `supabase migration up`).
+- **Web Dashboard SQL Editor**: You can also copy and execute `supabase_schema.sql` (or `supabase/migrations/20261113_init.sql`) directly in the [Supabase SQL Editor](https://supabase.com/dashboard).
+  - *Note: Execute only once to avoid duplicate publication notices.*
+  - This sets up `accounts`, `expenses`, RLS policies, the atomic RPC functions (`create_expense`, `delete_expense`), and Realtime publications.
 
 ### 2. Configure Environment Variables
 Copy `.env.example` to `.env` and fill in your Supabase credentials:

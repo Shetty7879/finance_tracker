@@ -1,5 +1,14 @@
 -- ============================================================================
--- FRIDAYTRACK: SUPABASE DATABASE INITIALIZATION MIGRATION
+-- FRIDAYTRACK: SUPABASE DATABASE INITIALIZATION SCHEMA
+-- ============================================================================
+-- NOTE ON CANONICAL MIGRATIONS:
+-- The canonical migration directory is: supabase/migrations/
+-- Canonical migration file: supabase/migrations/20261113_init.sql
+--
+-- This root file (supabase_schema.sql) is maintained as an authoritative reference
+-- for copy-pasting directly into the Supabase Dashboard SQL Editor.
+-- Running EITHER supabase/migrations/20261113_init.sql OR this file once initializes
+-- the entire FridayTrack backend. Do not run both simultaneously.
 -- ============================================================================
 
 -- 1. Enable UUID Extension

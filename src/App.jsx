@@ -10,10 +10,10 @@ import AddExpenseModal from './components/AddExpenseModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import AuthView from './components/AuthView';
 import SupabaseSetupBanner from './components/SupabaseSetupBanner';
-import { Plus, WalletCards, Loader2 } from 'lucide-react';
+import { Plus, WalletCards, Loader2, AlertTriangle } from 'lucide-react';
 
 function DashboardView() {
-  const { deleteAccount, deleteExpense } = useFinance();
+  const { deleteAccount, deleteExpense, error: financeError } = useFinance();
 
   // Modals visibility state
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
@@ -56,6 +56,25 @@ function DashboardView() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         
+        {/* Useful error banner if database migration or connection issues occur */}
+        {financeError && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-200 text-xs sm:text-sm flex items-start space-x-3 animate-fade-in">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white">
+                {financeError.includes('schema cache') || financeError.includes('accounts')
+                  ? 'Supabase Database Setup Required'
+                  : 'Database Connection Notice'}
+              </p>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                {financeError.includes('schema cache') || financeError.includes('accounts')
+                  ? 'The "accounts" and "expenses" tables have not been created yet in your Supabase project. Please copy and run the SQL migration from supabase_schema.sql (or supabase/migrations/20261113_init.sql) in your Supabase Dashboard SQL Editor.'
+                  : financeError}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* 1. Dashboard Overview Cards */}
         <DashboardCards
           onOpenAddAccount={() => setIsAddAccountOpen(true)}
