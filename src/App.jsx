@@ -160,7 +160,7 @@ function MainContent() {
     );
   }
 
-  // User is not signed in -> show AuthView (Login / Sign Up / Forgot Password) by default
+  // User is not signed in -> show AuthView (Sign In / Forgot Password) by default
   if (!user) {
     return <AuthView />;
   }

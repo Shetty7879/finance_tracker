@@ -19,10 +19,10 @@ import {
 } from 'lucide-react';
 
 export default function AuthView() {
-  const { signIn, signUp, resetPassword, authError, setAuthError, isConfigured } = useAuth();
+  const { signIn, resetPassword, authError, setAuthError, isConfigured } = useAuth();
   const { theme, setTheme } = useFinance();
 
-  const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'forgot'
+  const [mode, setMode] = useState('login'); // 'login' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -94,20 +94,10 @@ export default function AuthView() {
 
     setSubmitting(true);
     try {
-      if (mode === 'signup') {
-        const data = await signUp(cleanEmail, password);
-        if (data?.user && !data.session) {
-          setLocalMessage({
-            type: 'info',
-            text: 'Account created! Please check your email to confirm your account, then sign in.',
-          });
-        }
-      } else {
-        await signIn(cleanEmail, password);
-      }
+      await signIn(cleanEmail, password);
     } catch (err) {
-      console.error('Auth error:', err);
-      // NEVER fail silently: guarantee error state is visible to user
+      console.error('Sign in error:', err);
+      // Guarantee error state is visible to user
       setAuthError(err.message || 'Authentication failed. Please check your credentials and try again.');
     } finally {
       setSubmitting(false);
@@ -193,47 +183,14 @@ export default function AuthView() {
             </div>
           )}
 
-          {/* Mode Switcher (Login / Signup) */}
-          {mode !== 'forgot' ? (
-            <div className="grid grid-cols-2 p-1 mb-6 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('login');
-                  setAuthError(null);
-                  setLocalMessage(null);
-                }}
-                className={`py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                  mode === 'login'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('signup');
-                  setAuthError(null);
-                  setLocalMessage(null);
-                }}
-                className={`py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                  mode === 'signup'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                Create Account
-              </button>
-            </div>
-          ) : (
+          {/* Card Subheader (Login / Forgot Password) */}
+          {mode === 'forgot' ? (
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                   Reset Password
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Enter your email to receive a password reset link
                 </p>
               </div>
@@ -249,6 +206,15 @@ export default function AuthView() {
                 <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                 Back to Sign In
               </button>
+            </div>
+          ) : (
+            <div className="mb-6 text-center">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Sign In
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Enter your email and password to access your dashboard
+              </p>
             </div>
           )}
 
@@ -273,7 +239,7 @@ export default function AuthView() {
                   autoCorrect="off"
                   spellCheck="false"
                   inputMode="email"
-                  enterKeyHint="next"
+                  enterKeyHint={mode === 'forgot' ? 'go' : 'next'}
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -283,26 +249,24 @@ export default function AuthView() {
               </div>
             </div>
 
-            {/* Password Field (only for Login and Signup) */}
-            {mode !== 'forgot' && (
+            {/* Password Field (only for Login) */}
+            {mode === 'login' && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label htmlFor="auth-password" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                     Password
                   </label>
-                  {mode === 'login' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('forgot');
-                        setAuthError(null);
-                        setLocalMessage(null);
-                      }}
-                      className="text-xs font-medium text-brand-600 hover:text-brand-500 dark:text-brand-400 hover:underline cursor-pointer"
-                    >
-                      Forgot password?
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('forgot');
+                      setAuthError(null);
+                      setLocalMessage(null);
+                    }}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-500 dark:text-brand-400 hover:underline cursor-pointer"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -321,7 +285,7 @@ export default function AuthView() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-11 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
-                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -373,8 +337,6 @@ export default function AuthView() {
                   <span>
                     {mode === 'login'
                       ? 'Signing In...'
-                      : mode === 'signup'
-                      ? 'Creating Account...'
                       : 'Sending Link...'}
                   </span>
                 </div>
@@ -383,8 +345,6 @@ export default function AuthView() {
                   <span>
                     {mode === 'login'
                       ? 'Sign In to FridayTrack'
-                      : mode === 'signup'
-                      ? 'Create Free Account'
                       : 'Send Reset Link'}
                   </span>
                   <ArrowRight className="w-4 h-4" />

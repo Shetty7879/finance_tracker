@@ -233,7 +233,7 @@ function resolveView({ user, loading }) {
 // Scenario 4.1: Fresh visitor on any device (unauthenticated)
 const freshVisitorView = resolveView({ user: null, loading: false });
 assert.strictEqual(freshVisitorView, 'AUTH_VIEW', 'Unauthenticated visitors must see AuthView immediately');
-console.log('✅ Test 4.1: Fresh visitor / new device directly routed to AuthView (Login / Sign Up)');
+console.log('✅ Test 4.1: Fresh visitor / new device directly routed to AuthView (Sign In)');
 
 // Scenario 4.2: Authenticated user
 const loggedInView = resolveView({ user: { id: 'user_123' }, loading: false });
