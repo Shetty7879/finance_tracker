@@ -1,10 +1,11 @@
 import React from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { useAuth } from '../context/AuthContext';
-import { Sun, Moon, Monitor, WalletCards, LogOut, Radio } from 'lucide-react';
+import { WalletCards, LogOut } from 'lucide-react';
+import SwitchMode from './switch-mode';
 
 export default function Navbar({ onOpenAddAccount, onOpenAddExpense }) {
-  const { theme, setTheme, syncStatus } = useFinance();
+  const { syncStatus } = useFinance();
   const { user, signOut } = useAuth();
 
   return (
@@ -37,52 +38,12 @@ export default function Navbar({ onOpenAddAccount, onOpenAddExpense }) {
             </div>
           </div>
 
-          {/* Right Action bar: User Session + Theme Switcher + Add Expense */}
+          {/* Right Action bar: User Session + Watermelon Theme Switcher + Add Expense */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             
-            {/* Theme Toggle Pill */}
-            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-inner">
-              <button
-                type="button"
-                onClick={() => setTheme('light')}
-                title="Light mode"
-                className={`p-1.5 rounded-lg transition-all ${
-                  theme === 'light'
-                    ? 'bg-white dark:bg-slate-700 text-amber-500 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                }`}
-              >
-                <Sun className="w-4 h-4" />
-                <span className="sr-only">Light</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTheme('dark')}
-                title="Dark mode"
-                className={`p-1.5 rounded-lg transition-all ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 text-sky-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                }`}
-              >
-                <Moon className="w-4 h-4" />
-                <span className="sr-only">Dark</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTheme('system')}
-                title="System theme"
-                className={`p-1.5 rounded-lg transition-all ${
-                  theme === 'system'
-                    ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                }`}
-              >
-                <Monitor className="w-4 h-4" />
-                <span className="sr-only">System</span>
-              </button>
+            {/* Watermelon Switch Mode Component */}
+            <div className="flex items-center">
+              <SwitchMode height={34} />
             </div>
 
             {/* Quick Add Expense button */}

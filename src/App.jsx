@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemeProvider } from 'next-themes';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import Navbar from './components/Navbar';
@@ -171,10 +172,17 @@ function MainContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <FinanceProvider>
-        <MainContent />
-      </FinanceProvider>
-    </AuthProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem={true}
+      storageKey="fridaytrack_theme_v1"
+    >
+      <AuthProvider>
+        <FinanceProvider>
+          <MainContent />
+        </FinanceProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

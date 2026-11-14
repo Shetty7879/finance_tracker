@@ -10,13 +10,11 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
-  Sun,
-  Moon,
-  Monitor,
   ArrowLeft,
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
+import SwitchMode from './switch-mode';
 
 export default function AuthView() {
   const { signIn, resetPassword, authError, setAuthError, isConfigured } = useAuth();
@@ -109,47 +107,7 @@ export default function AuthView() {
       
       {/* Top Bar Theme Switcher */}
       <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
-        <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-inner">
-          <button
-            type="button"
-            onClick={() => setTheme('light')}
-            title="Light mode"
-            className={`p-1.5 rounded-lg transition-all ${
-              theme === 'light'
-                ? 'bg-white dark:bg-slate-700 text-amber-500 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <Sun className="w-3.5 h-3.5" />
-            <span className="sr-only">Light</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTheme('dark')}
-            title="Dark mode"
-            className={`p-1.5 rounded-lg transition-all ${
-              theme === 'dark'
-                ? 'bg-slate-700 text-sky-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <Moon className="w-3.5 h-3.5" />
-            <span className="sr-only">Dark</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTheme('system')}
-            title="System theme"
-            className={`p-1.5 rounded-lg transition-all ${
-              theme === 'system'
-                ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <Monitor className="w-3.5 h-3.5" />
-            <span className="sr-only">System</span>
-          </button>
-        </div>
+        <SwitchMode height={32} />
       </div>
 
       <div className="w-full max-w-md my-auto">

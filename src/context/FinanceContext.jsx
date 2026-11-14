@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useTheme } from 'next-themes';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -9,10 +10,21 @@ const THEME_STORAGE_KEY = 'fridaytrack_theme_v1';
 export function FinanceProvider({ children }) {
   const { user } = useAuth();
 
-  // Theme state: 'light' | 'dark' | 'system'
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+  // Safely integrate with next-themes with fallback
+  let nextThemeObj = null;
+  try {
+    nextThemeObj = useTheme();
+  } catch {
+    // Fallback if rendered outside ThemeProvider
+  }
+
+  const [localTheme, setLocalTheme] = useState(() => {
+    return (typeof window !== 'undefined' ? localStorage.getItem(THEME_STORAGE_KEY) : 'system') || 'system';
   });
+
+  const theme = nextThemeObj?.theme ?? localTheme;
+  const setTheme = nextThemeObj?.setTheme ?? setLocalTheme;
+  const resolvedTheme = nextThemeObj?.resolvedTheme ?? (theme === 'system' ? 'light' : theme);
 
   // Database-backed states
   const [accounts, setAccounts] = useState([]);
@@ -21,8 +33,10 @@ export function FinanceProvider({ children }) {
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'live' | 'error'
   const [error, setError] = useState(null);
 
-  // Theme application logic
+  // Fallback theme application logic if next-themes is not active
   useEffect(() => {
+    if (nextThemeObj) return; // next-themes handles DOM class and storage automatically
+
     const root = document.documentElement;
     localStorage.setItem(THEME_STORAGE_KEY, theme);
 
@@ -55,7 +69,7 @@ export function FinanceProvider({ children }) {
       mediaQuery.addEventListener('change', listener);
       return () => mediaQuery.removeEventListener('change', listener);
     }
-  }, [theme]);
+  }, [theme, nextThemeObj]);
 
   /**
    * Fetch all accounts and expenses for the authenticated user from Supabase
@@ -348,6 +362,7 @@ export function FinanceProvider({ children }) {
         expenses,
         theme,
         setTheme,
+        resolvedTheme,
         totalBalance,
         totalExpenses,
         thisMonthExpenses,
