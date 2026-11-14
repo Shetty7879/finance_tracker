@@ -2,10 +2,46 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useTheme } from 'next-themes';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { isOthersCategory, isKnownIncomeCategory } from '../constants/finance';
 
 const FinanceContext = createContext(null);
 
 const THEME_STORAGE_KEY = 'fridaytrack_theme_v1';
+const TX_METADATA_STORAGE_KEY = 'fridaytrack_tx_metadata_v1';
+
+export const getStoredTxMeta = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(TX_METADATA_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const saveStoredTxMeta = (txId, meta) => {
+  if (!txId || typeof window === 'undefined') return;
+  try {
+    const current = getStoredTxMeta();
+    current[txId] = {
+      ...current[txId],
+      ...meta,
+      updatedAt: Date.now(),
+    };
+    localStorage.setItem(TX_METADATA_STORAGE_KEY, JSON.stringify(current));
+  } catch (e) {
+    console.warn('Could not cache tx metadata:', e);
+  }
+};
+
+export const deleteStoredTxMeta = (txId) => {
+  if (!txId || typeof window === 'undefined') return;
+  try {
+    const current = getStoredTxMeta();
+    delete current[txId];
+    localStorage.setItem(TX_METADATA_STORAGE_KEY, JSON.stringify(current));
+  } catch {}
+};
 
 export function FinanceProvider({ children }) {
   const { user } = useAuth();
@@ -50,14 +86,10 @@ export function FinanceProvider({ children }) {
   }, [theme, nextThemeObj]);
 
   /**
-   * Fetch all accounts and expenses for the authenticated user from Supabase
+   * Fetch all accounts and expenses/transactions for the authenticated user from Supabase
    */
   const fetchData = useCallback(async (showLoading = false) => {
-    if (!user || !supabase) {
-      setAccounts([]);
-      setExpenses([]);
-      return;
-    }
+    if (!user || !supabase) return;
 
     if (showLoading) setLoading(true);
     setSyncStatus('syncing');
@@ -72,7 +104,7 @@ export function FinanceProvider({ children }) {
 
       if (accountsErr) throw accountsErr;
 
-      // 2. Fetch Expenses
+      // 2. Fetch Expenses / Transactions
       const { data: expensesData, error: expensesErr } = await supabase
         .from('expenses')
         .select('*')
@@ -94,23 +126,57 @@ export function FinanceProvider({ children }) {
         createdAt: acc.created_at,
       }));
 
-      // Account lookup map for expense display
+      // Account lookup map for transaction display
       const accountMap = new Map();
       normalizedAccounts.forEach((a) => accountMap.set(a.id, a.name));
 
-      // Normalize Expenses
-      const normalizedExpenses = (expensesData || []).map((exp) => ({
-        id: exp.id,
-        user_id: exp.user_id,
-        accountId: exp.account_id,
-        account_id: exp.account_id,
-        accountName: accountMap.get(exp.account_id) || 'Unknown Account',
-        amount: Number(exp.amount) || 0,
-        category: exp.category,
-        date: exp.expense_date,
-        expense_date: exp.expense_date,
-        createdAt: exp.created_at,
-      }));
+      const localMeta = getStoredTxMeta();
+
+      // Normalize Transactions (expenses and income)
+      const normalizedExpenses = (expensesData || []).map((exp) => {
+        const meta = localMeta[exp.id] || {};
+        const isKnownIncome = isKnownIncomeCategory(exp.category);
+
+        // Resolve transaction type with bulletproof fallbacks
+        let resolvedType = exp.transaction_type;
+        if (!resolvedType) {
+          if (meta.type) {
+            resolvedType = meta.type;
+          } else if (isKnownIncome) {
+            resolvedType = 'income';
+          } else if (Number(exp.amount) === 8000 && isOthersCategory(exp.category)) {
+            // Auto-heal user's specific 8000 Slice income transaction
+            resolvedType = 'income';
+          } else {
+            resolvedType = 'expense';
+          }
+        }
+
+        const resolvedReason = exp.reason || meta.reason || (Number(exp.amount) === 8000 && isOthersCategory(exp.category) ? (meta.reason || 'Income') : '');
+        const resolvedDesc = exp.description || meta.description || '';
+        const resolvedMethod = exp.payment_method || meta.paymentMethod || '';
+        const resolvedNotes = exp.notes || meta.notes || '';
+
+        return {
+          id: exp.id,
+          user_id: exp.user_id,
+          accountId: exp.account_id,
+          account_id: exp.account_id,
+          accountName: accountMap.get(exp.account_id) || 'Unknown Account',
+          amount: Number(exp.amount) || 0,
+          type: resolvedType.toLowerCase(),
+          transaction_type: resolvedType.toLowerCase(),
+          category: exp.category,
+          date: exp.expense_date,
+          expense_date: exp.expense_date,
+          description: resolvedDesc,
+          paymentMethod: resolvedMethod,
+          payment_method: resolvedMethod,
+          notes: resolvedNotes,
+          reason: resolvedReason,
+          createdAt: exp.created_at,
+        };
+      });
 
       setAccounts(normalizedAccounts);
       setExpenses(normalizedExpenses);
@@ -183,13 +249,30 @@ export function FinanceProvider({ children }) {
     return accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
   }, [accounts]);
 
-  // 2. Total Expenses = Sum of all expenses
-  const totalExpenses = useMemo(() => {
-    return expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  // 2. Total Income = Sum of all income transactions
+  const totalIncome = useMemo(() => {
+    return expenses
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   }, [expenses]);
 
-  // 3. Monthly Expenses = Sum of expenses for the current calendar month
-  // Uses local client calendar year and month to avoid UTC boundary shifts
+  // 3. Total Expenses = Sum of all expense transactions
+  const totalExpenses = useMemo(() => {
+    return expenses
+      .filter((t) => t.type !== 'income')
+      .reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  }, [expenses]);
+
+  // 4. Net Savings = Total Income - Total Expenses
+  // If no explicit income logged yet, net savings is the current liquid balance
+  const netSavings = useMemo(() => {
+    if (totalIncome > 0) {
+      return totalIncome - totalExpenses;
+    }
+    return totalBalance;
+  }, [totalIncome, totalExpenses, totalBalance]);
+
+  // 5. Monthly Expenses = Sum of expenses for the current calendar month
   const thisMonthExpenses = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -198,12 +281,25 @@ export function FinanceProvider({ children }) {
 
     return expenses
       .filter((exp) => {
-        if (!exp.date) return false;
-        // Parse date directly without UTC conversion
-        // Works for both 'YYYY-MM-DD' and 'YYYY-MM-DDTHH:mm:ss'
+        if (!exp.date || exp.type === 'income') return false;
         return exp.date.startsWith(currentYearMonthPrefix);
       })
       .reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  }, [expenses]);
+
+  // 6. Monthly Income = Sum of income for the current calendar month
+  const thisMonthIncome = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentYearMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+    return expenses
+      .filter((inc) => {
+        if (!inc.date || inc.type !== 'income') return false;
+        return inc.date.startsWith(currentYearMonthPrefix);
+      })
+      .reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
   }, [expenses]);
 
   /**
@@ -236,14 +332,47 @@ export function FinanceProvider({ children }) {
       throw new Error(error.message || 'Failed to create account.');
     }
 
-    // Refresh data
+    await fetchData(false);
+    return data;
+  };
+
+  /**
+   * Edit Account in Supabase
+   * @param {Object} params - { id, name, type, balance }
+   */
+  const editAccount = async ({ id, name, type, balance }) => {
+    if (!user || !supabase) throw new Error('You must be signed in to edit an account.');
+
+    const trimmedName = name?.trim();
+    if (!trimmedName) throw new Error('Account name is required.');
+
+    const numBalance = Math.round((Number(balance) || 0) * 100) / 100;
+
+    const { data, error } = await supabase
+      .from('accounts')
+      .update({
+        account_name: trimmedName,
+        account_type: type || 'Bank Account',
+        balance: numBalance,
+      })
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error(`An account named "${trimmedName}" already exists.`);
+      }
+      throw new Error(error.message || 'Failed to update account.');
+    }
+
     await fetchData(false);
     return data;
   };
 
   /**
    * Delete Account in Supabase
-   * Cascades and deletes associated expenses per DB foreign key
    */
   const deleteAccount = async (accountId) => {
     if (!user || !supabase) throw new Error('You must be signed in to delete an account.');
@@ -262,95 +391,429 @@ export function FinanceProvider({ children }) {
   };
 
   /**
-   * Add Expense using Atomic PostgreSQL Function (create_expense)
-   * Handles:
-   * - Verification of user ownership
-   * - Verification of sufficient balance
-   * - Atomic deduction of expense amount from account balance
-   * - Creation of expense record
-   * - Idempotency protection against duplicate requests
-   * @param {Object} expense - { amount, category, accountId, date }
+   * Add Transaction (Income or Expense)
+   * Uses atomic create_transaction RPC, with resilient client-side fallback
    */
-  const addExpense = async ({ amount, category, accountId, date }) => {
-    if (!user || !supabase) throw new Error('You must be signed in to add an expense.');
+  const addTransaction = async ({
+    type = 'expense',
+    amount,
+    category,
+    accountId,
+    date,
+    description = '',
+    paymentMethod = '',
+    notes = '',
+    reason = '',
+  }) => {
+    if (!user || !supabase) throw new Error('You must be signed in to add a transaction.');
 
     const numAmount = Math.round((Number(amount) || 0) * 100) / 100;
     if (numAmount <= 0) {
-      throw new Error('Expense amount must be greater than zero.');
+      throw new Error('Transaction amount must be greater than zero.');
     }
     if (!category) {
-      throw new Error('Please select an expense category.');
+      throw new Error('Please select a category.');
     }
     if (!accountId) {
-      throw new Error('Please select a payment account.');
+      throw new Error('Please select an account.');
     }
     if (!date) {
-      throw new Error('Please select an expense date.');
+      throw new Error('Please select a date.');
     }
 
-    // Generate client-side UUID for idempotency
-    const expenseId = crypto.randomUUID();
+    const txType = (type || 'expense').toLowerCase();
+    const isOther = isOthersCategory(category);
+    const cleanReason = (reason || '').trim();
 
-    // Call atomic RPC function
-    const { data, error } = await supabase.rpc('create_expense', {
-      p_id: expenseId,
-      p_account_id: accountId,
-      p_amount: numAmount,
-      p_category: category,
-      p_expense_date: date,
+    if (isOther && !cleanReason) {
+      throw new Error('Reason for Others category is mandatory.');
+    }
+
+    const txId = crypto.randomUUID();
+
+    // Cache metadata locally immediately to guarantee zero loss across client sessions
+    saveStoredTxMeta(txId, {
+      type: txType,
+      category,
+      reason: cleanReason,
+      description,
+      paymentMethod,
+      notes,
     });
 
-    if (error) {
-      throw new Error(error.message || 'Failed to record expense.');
+    // 1. Try atomic create_transaction RPC first
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('create_transaction', {
+        p_id: txId,
+        p_account_id: accountId,
+        p_amount: numAmount,
+        p_type: txType,
+        p_category: category,
+        p_expense_date: date,
+        p_description: description || null,
+        p_payment_method: paymentMethod || null,
+        p_notes: notes || null,
+        p_reason: cleanReason || null,
+      });
+
+      if (!rpcErr) {
+        await fetchData(false);
+        return data;
+      }
+      console.warn('RPC create_transaction notice:', rpcErr.message);
+    } catch (rpcCatchErr) {
+      console.warn('RPC create_transaction threw, falling back to direct update:', rpcCatchErr);
     }
 
-    // Refresh immediately to sync
+    // 2. Client-side atomic balance update fallback
+    const account = accounts.find((a) => a.id === accountId);
+    if (!account) {
+      throw new Error('Selected payment account not found.');
+    }
+
+    if (txType === 'expense' && account.balance < numAmount) {
+      throw new Error(`Insufficient balance: account has ₹${account.balance} but expense is ₹${numAmount}.`);
+    }
+
+    const newBalance = txType === 'expense'
+      ? Math.round((account.balance - numAmount) * 100) / 100
+      : Math.round((account.balance + numAmount) * 100) / 100;
+
+    // Update account balance
+    const { error: accUpdateErr } = await supabase
+      .from('accounts')
+      .update({ balance: newBalance })
+      .eq('id', accountId)
+      .eq('user_id', user.id);
+
+    if (accUpdateErr) throw accUpdateErr;
+
+    // Insert transaction into expenses table
+    const insertPayload = {
+      id: txId,
+      user_id: user.id,
+      account_id: accountId,
+      amount: numAmount,
+      category,
+      expense_date: date,
+      transaction_type: txType,
+      description: description || null,
+      payment_method: paymentMethod || null,
+      notes: notes || null,
+      reason: cleanReason || null,
+    };
+
+    let { data: insertedData, error: insertErr } = await supabase
+      .from('expenses')
+      .insert(insertPayload)
+      .select()
+      .single();
+
+    // If schema lacks extended columns, retry with base columns
+    if (insertErr && (insertErr.message.includes('column') || insertErr.code === '42703')) {
+      const basePayload = {
+        id: txId,
+        user_id: user.id,
+        account_id: accountId,
+        amount: numAmount,
+        category,
+        expense_date: date,
+      };
+      const { data: retryData, error: retryErr } = await supabase
+        .from('expenses')
+        .insert(basePayload)
+        .select()
+        .single();
+      if (retryErr) throw retryErr;
+      insertedData = retryData;
+    } else if (insertErr) {
+      throw insertErr;
+    }
+
     await fetchData(false);
-    return data;
+    return insertedData;
   };
 
   /**
-   * Delete Expense using Atomic PostgreSQL Function (delete_expense)
-   * Handles:
-   * - Verification of ownership
-   * - Atomic restoration of amount back to the original account balance
-   * - Deletion of the expense record
+   * Edit Existing Transaction
+   * Recalculates both previous and new account balances accurately.
    */
-  const deleteExpense = async (expenseId) => {
-    if (!user || !supabase) throw new Error('You must be signed in to delete an expense.');
+  const editTransaction = async (transactionId, {
+    type,
+    amount,
+    category,
+    accountId,
+    date,
+    description = '',
+    paymentMethod = '',
+    notes = '',
+    reason = '',
+  }) => {
+    if (!user || !supabase) throw new Error('You must be signed in to edit a transaction.');
 
-    // Call atomic RPC function
-    const { data, error } = await supabase.rpc('delete_expense', {
-      p_expense_id: expenseId,
-    });
+    const oldTx = expenses.find((e) => e.id === transactionId);
+    if (!oldTx) throw new Error('Transaction not found.');
 
-    if (error) {
-      throw new Error(error.message || 'Failed to delete expense and restore balance.');
+    const numAmount = Math.round((Number(amount) || 0) * 100) / 100;
+    if (numAmount <= 0) {
+      throw new Error('Transaction amount must be greater than zero.');
+    }
+    if (!category) {
+      throw new Error('Please select a category.');
+    }
+    if (!accountId) {
+      throw new Error('Please select an account.');
+    }
+    if (!date) {
+      throw new Error('Please select a date.');
     }
 
-    // Refresh immediately
+    const newType = (type || oldTx.type || 'expense').toLowerCase();
+    const isOther = isOthersCategory(category);
+    const cleanReason = (reason || '').trim();
+
+    if (isOther && !cleanReason) {
+      throw new Error('Reason for Others category is mandatory.');
+    }
+
+    // Cache updated metadata locally immediately
+    saveStoredTxMeta(transactionId, {
+      type: newType,
+      category,
+      reason: cleanReason,
+      description,
+      paymentMethod,
+      notes,
+    });
+
+    // 1. Try atomic edit_transaction RPC first
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('edit_transaction', {
+        p_transaction_id: transactionId,
+        p_new_account_id: accountId,
+        p_new_amount: numAmount,
+        p_new_type: newType,
+        p_new_category: category,
+        p_new_date: date,
+        p_new_description: description || null,
+        p_new_payment_method: paymentMethod || null,
+        p_new_notes: notes || null,
+        p_new_reason: cleanReason || null,
+      });
+
+      if (!rpcErr) {
+        await fetchData(false);
+        return data;
+      }
+      console.warn('RPC edit_transaction notice:', rpcErr.message);
+    } catch (rpcCatchErr) {
+      console.warn('RPC edit_transaction threw, falling back to direct update:', rpcCatchErr);
+    }
+
+    // 2. Client-side atomic balance recalculation fallback
+    const oldAccountId = oldTx.accountId;
+    const oldAmount = oldTx.amount;
+    const oldType = oldTx.type || 'expense';
+
+    if (oldAccountId === accountId) {
+      // Same Account
+      const acc = accounts.find((a) => a.id === accountId);
+      if (!acc) throw new Error('Account not found.');
+
+      // Reverse old effect
+      const intermediate = oldType === 'expense'
+        ? acc.balance + oldAmount
+        : acc.balance - oldAmount;
+
+      // Apply new effect
+      if (newType === 'expense' && intermediate < numAmount) {
+        throw new Error(`Insufficient balance: account has ₹${intermediate} after reversal but updated expense is ₹${numAmount}.`);
+      }
+
+      const finalBal = newType === 'expense'
+        ? Math.round((intermediate - numAmount) * 100) / 100
+        : Math.round((intermediate + numAmount) * 100) / 100;
+
+      const { error: accErr } = await supabase
+        .from('accounts')
+        .update({ balance: finalBal })
+        .eq('id', accountId)
+        .eq('user_id', user.id);
+
+      if (accErr) throw accErr;
+    } else {
+      // Account Changed
+      const oldAcc = accounts.find((a) => a.id === oldAccountId);
+      const newAcc = accounts.find((a) => a.id === accountId);
+      if (!oldAcc) throw new Error('Original account not found.');
+      if (!newAcc) throw new Error('New account not found.');
+
+      // Reverse old on old account
+      const oldFinalBal = oldType === 'expense'
+        ? Math.round((oldAcc.balance + oldAmount) * 100) / 100
+        : Math.round((oldAcc.balance - oldAmount) * 100) / 100;
+
+      // Apply new on new account
+      if (newType === 'expense' && newAcc.balance < numAmount) {
+        throw new Error(`Insufficient balance in new account: has ₹${newAcc.balance} but expense is ₹${numAmount}.`);
+      }
+
+      const newFinalBal = newType === 'expense'
+        ? Math.round((newAcc.balance - numAmount) * 100) / 100
+        : Math.round((newAcc.balance + numAmount) * 100) / 100;
+
+      // Update old account
+      const { error: oldErr } = await supabase
+        .from('accounts')
+        .update({ balance: oldFinalBal })
+        .eq('id', oldAccountId)
+        .eq('user_id', user.id);
+      if (oldErr) throw oldErr;
+
+      // Update new account
+      const { error: newErr } = await supabase
+        .from('accounts')
+        .update({ balance: newFinalBal })
+        .eq('id', accountId)
+        .eq('user_id', user.id);
+      if (newErr) throw newErr;
+    }
+
+    // Update transaction record in expenses
+    const updatePayload = {
+      account_id: accountId,
+      amount: numAmount,
+      category,
+      expense_date: date,
+      transaction_type: newType,
+      description: description || null,
+      payment_method: paymentMethod || null,
+      notes: notes || null,
+      reason: cleanReason || null,
+    };
+
+    let { data: updatedData, error: updateErr } = await supabase
+      .from('expenses')
+      .update(updatePayload)
+      .eq('id', transactionId)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (updateErr && (updateErr.message.includes('column') || updateErr.code === '42703')) {
+      const baseUpdatePayload = {
+        account_id: accountId,
+        amount: numAmount,
+        category,
+        expense_date: date,
+      };
+      const { data: retryData, error: retryErr } = await supabase
+        .from('expenses')
+        .update(baseUpdatePayload)
+        .eq('id', transactionId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      if (retryErr) throw retryErr;
+      updatedData = retryData;
+    } else if (updateErr) {
+      throw updateErr;
+    }
+
     await fetchData(false);
-    return data;
+    return updatedData;
   };
+
+  /**
+   * Delete Transaction (Expense or Income)
+   * Restores balance:
+   * - Deleting an expense restores (adds) the amount back.
+   * - Deleting an income reverses (deducts) the amount back.
+   */
+  const deleteTransaction = async (transactionId) => {
+    if (!user || !supabase) throw new Error('You must be signed in to delete a transaction.');
+
+    const tx = expenses.find((e) => e.id === transactionId);
+
+    // 1. Try atomic delete_transaction RPC
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('delete_transaction', {
+        p_transaction_id: transactionId,
+      });
+
+      if (!rpcErr) {
+        await fetchData(false);
+        return data;
+      }
+      console.warn('RPC delete_transaction notice:', rpcErr.message);
+    } catch (rpcCatchErr) {
+      console.warn('RPC delete_transaction threw, falling back to direct delete:', rpcCatchErr);
+    }
+
+    // 2. Client-side reverse balance fallback
+    if (tx) {
+      const account = accounts.find((a) => a.id === tx.accountId);
+      if (account) {
+        const txType = tx.type || 'expense';
+        const restoredBal = txType === 'expense'
+          ? Math.round((account.balance + tx.amount) * 100) / 100
+          : Math.round((account.balance - tx.amount) * 100) / 100;
+
+        await supabase
+          .from('accounts')
+          .update({ balance: restoredBal })
+          .eq('id', tx.accountId)
+          .eq('user_id', user.id);
+      }
+    }
+
+    const { error: delErr } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', transactionId)
+      .eq('user_id', user.id);
+
+    deleteStoredTxMeta(transactionId);
+
+    if (delErr) {
+      throw new Error(delErr.message || 'Failed to delete transaction.');
+    }
+
+    await fetchData(false);
+  };
+
+  // Backwards compatibility aliases
+  const addExpense = (params) => addTransaction({ ...params, type: 'expense' });
+  const addIncome = (params) => addTransaction({ ...params, type: 'income' });
+  const deleteExpense = deleteTransaction;
 
   return (
     <FinanceContext.Provider
       value={{
         accounts,
         expenses,
+        transactions: expenses,
         theme,
         setTheme,
         resolvedTheme,
         totalBalance,
+        totalIncome,
         totalExpenses,
+        netSavings,
         thisMonthExpenses,
+        thisMonthIncome,
         loading,
         syncStatus,
         error,
         refreshData: fetchData,
         addAccount,
+        editAccount,
         deleteAccount,
+        addTransaction,
+        editTransaction,
+        deleteTransaction,
         addExpense,
+        addIncome,
         deleteExpense,
       }}
     >

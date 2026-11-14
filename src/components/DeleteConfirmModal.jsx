@@ -5,12 +5,13 @@ import { AlertTriangle, X } from 'lucide-react';
 export default function DeleteConfirmModal({ isOpen, onClose, onConfirm, item, type }) {
   if (!isOpen || !item) return null;
 
-  const isExpense = type === 'expense';
+  const isAccount = type === 'account';
+  const isIncome = !isAccount && (item.type === 'income' || item.transaction_type === 'income');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
       <div
-        className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 animate-scale-up"
+        className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 animate-scale-up max-h-[90vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
       >
@@ -28,10 +29,34 @@ export default function DeleteConfirmModal({ isOpen, onClose, onConfirm, item, t
 
         <div className="mt-4">
           <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-            {isExpense ? 'Delete Expense?' : 'Delete Account?'}
+            {isAccount
+              ? 'Delete Account?'
+              : isIncome
+              ? 'Delete Income Record?'
+              : 'Delete Expense?'}
           </h3>
-          <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-            {isExpense ? (
+          <div className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            {isAccount ? (
+              <>
+                Are you sure you want to delete account{' '}
+                <strong className="text-slate-900 dark:text-white">{item.name}</strong> (Balance:{' '}
+                {formatINR(item.balance)})?
+                <br />
+                <span className="text-amber-600 dark:text-amber-400 font-medium inline-block mt-2">
+                  ⚠ All recorded transactions linked to this account will also be removed.
+                </span>
+              </>
+            ) : isIncome ? (
+              <>
+                Are you sure you want to delete this{' '}
+                <strong className="text-slate-900 dark:text-white">{item.category}</strong> income of{' '}
+                <strong className="text-emerald-600 dark:text-emerald-400">{formatINR(item.amount)}</strong>?
+                <br />
+                <span className="text-amber-600 dark:text-amber-400 font-medium inline-block mt-2">
+                  ⚠ {formatINR(item.amount)} will be automatically reversed (deducted) from your {item.accountName || 'account'} balance.
+                </span>
+              </>
+            ) : (
               <>
                 Are you sure you want to delete this{' '}
                 <strong className="text-slate-900 dark:text-white">{item.category}</strong> expense of{' '}
@@ -41,18 +66,8 @@ export default function DeleteConfirmModal({ isOpen, onClose, onConfirm, item, t
                   ✓ {formatINR(item.amount)} will be automatically refunded back to your {item.accountName || 'account'} balance.
                 </span>
               </>
-            ) : (
-              <>
-                Are you sure you want to delete account{' '}
-                <strong className="text-slate-900 dark:text-white">{item.name}</strong> (Balance:{' '}
-                {formatINR(item.balance)})?
-                <br />
-                <span className="text-amber-600 dark:text-amber-400 font-medium inline-block mt-2">
-                  ⚠ All recorded expenses linked to this account will also be removed.
-                </span>
-              </>
             )}
-          </p>
+          </div>
         </div>
 
         <div className="mt-6 flex items-center justify-end space-x-3">

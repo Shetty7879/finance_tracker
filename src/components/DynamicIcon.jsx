@@ -14,6 +14,13 @@ import {
   Smartphone,
   Wallet,
   CreditCard,
+  Laptop,
+  Store,
+  TrendingUp,
+  Coins,
+  Percent,
+  RotateCcw,
+  Gift,
   HelpCircle,
 } from 'lucide-react';
 
@@ -32,6 +39,13 @@ const iconMap = {
   Smartphone,
   Wallet,
   CreditCard,
+  Laptop,
+  Store,
+  TrendingUp,
+  Coins,
+  Percent,
+  RotateCcw,
+  Gift,
 };
 
 export default function DynamicIcon({ name, className = 'w-5 h-5' }) {

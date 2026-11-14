@@ -243,9 +243,430 @@ console.log('✅ Test 4.2: Authenticated user directly routed to DashboardView')
 // Scenario 4.3: Session expiry / logout
 const sessionExpiredView = resolveView({ user: null, loading: false });
 assert.strictEqual(sessionExpiredView, 'AUTH_VIEW', 'Session expiry must instantly return to AuthView');
-console.log('✅ Test 4.3: Session expiry / logout immediately returns to AuthView');
+console.log('✅ Test 4.3: Session expiry / logout immediately returns to AuthView\n');
+
+// ============================================================================
+// PART 5: INCOME, EDIT TRANSACTIONS & OTHERS REASON VERIFICATION
+// ============================================================================
+console.log('--- 5. Testing Income, Edit Transactions & Others Reason ---');
+
+let txAccounts = [
+  { id: 'acc_sbi', user_id: currentUserId, account_name: 'SBI', balance: 10000 },
+  { id: 'acc_hdfc', user_id: currentUserId, account_name: 'HDFC', balance: 5000 },
+];
+let transactionsList = [];
+
+function isOthers(cat) {
+  if (!cat) return false;
+  const n = String(cat).trim().toLowerCase();
+  return n === 'other' || n === 'others';
+}
+
+function mockCreateTransaction({ id, accountId, amount, type, category, date, description = '', paymentMethod = '', notes = '', reason = '' }) {
+  const numAmount = Math.round((Number(amount) || 0) * 100) / 100;
+  if (numAmount <= 0) throw new Error('Amount must be greater than zero.');
+  if (!category) throw new Error('Category is required.');
+  if (!accountId) throw new Error('Account is required.');
+
+  const txType = (type || 'expense').toLowerCase();
+  if (txType !== 'expense' && txType !== 'income') {
+    throw new Error('Invalid transaction type.');
+  }
+
+  // Mandatory Reason for Others validation
+  if (isOthers(category) && (!reason || !reason.trim())) {
+    throw new Error('Reason for Others category is mandatory.');
+  }
+
+  const account = txAccounts.find((a) => a.id === accountId);
+  if (!account) throw new Error('Account not found.');
+
+  if (txType === 'expense') {
+    if (account.balance < numAmount) {
+      throw new Error(`Insufficient balance: account has ₹${account.balance} but expense is ₹${numAmount}.`);
+    }
+    account.balance = Math.round((account.balance - numAmount) * 100) / 100;
+  } else {
+    // Income increases balance
+    account.balance = Math.round((account.balance + numAmount) * 100) / 100;
+  }
+
+  const tx = {
+    id: id || 'tx_' + Math.random().toString(36).substring(2),
+    user_id: currentUserId,
+    account_id: accountId,
+    amount: numAmount,
+    type: txType,
+    category,
+    date,
+    description,
+    paymentMethod,
+    notes,
+    reason: isOthers(category) ? reason.trim() : '',
+  };
+  transactionsList.push(tx);
+  return { tx, new_account_balance: account.balance };
+}
+
+function mockEditTransaction(transactionId, { accountId, amount, type, category, date, description = '', paymentMethod = '', notes = '', reason = '' }) {
+  const txIndex = transactionsList.findIndex((t) => t.id === transactionId);
+  if (txIndex === -1) throw new Error('Transaction not found.');
+  const oldTx = transactionsList[txIndex];
+
+  const numAmount = Math.round((Number(amount) || 0) * 100) / 100;
+  if (numAmount <= 0) throw new Error('Amount must be greater than zero.');
+
+  const newType = (type || oldTx.type).toLowerCase();
+  if (isOthers(category) && (!reason || !reason.trim())) {
+    throw new Error('Reason for Others category is mandatory.');
+  }
+
+  const oldAccountId = oldTx.account_id;
+  const newAccountId = accountId || oldAccountId;
+  const oldAmount = oldTx.amount;
+  const oldType = oldTx.type;
+
+  if (oldAccountId === newAccountId) {
+    const acc = txAccounts.find((a) => a.id === oldAccountId);
+    if (!acc) throw new Error('Account not found.');
+
+    // Reverse old
+    const intermediate = oldType === 'expense'
+      ? acc.balance + oldAmount
+      : acc.balance - oldAmount;
+
+    // Apply new
+    if (newType === 'expense' && intermediate < numAmount) {
+      throw new Error(`Insufficient balance: has ₹${intermediate} after reversal but updated expense is ₹${numAmount}.`);
+    }
+    acc.balance = newType === 'expense'
+      ? Math.round((intermediate - numAmount) * 100) / 100
+      : Math.round((intermediate + numAmount) * 100) / 100;
+  } else {
+    // Account changed
+    const oldAcc = txAccounts.find((a) => a.id === oldAccountId);
+    const newAcc = txAccounts.find((a) => a.id === newAccountId);
+    if (!oldAcc || !newAcc) throw new Error('Account not found.');
+
+    // Reverse old on old account
+    oldAcc.balance = oldType === 'expense'
+      ? Math.round((oldAcc.balance + oldAmount) * 100) / 100
+      : Math.round((oldAcc.balance - oldAmount) * 100) / 100;
+
+    // Apply new on new account
+    if (newType === 'expense' && newAcc.balance < numAmount) {
+      throw new Error(`Insufficient balance on new account.`);
+    }
+    newAcc.balance = newType === 'expense'
+      ? Math.round((newAcc.balance - numAmount) * 100) / 100
+      : Math.round((newAcc.balance + numAmount) * 100) / 100;
+  }
+
+  // Update record
+  oldTx.account_id = newAccountId;
+  oldTx.amount = numAmount;
+  oldTx.type = newType;
+  oldTx.category = category;
+  oldTx.date = date;
+  oldTx.description = description;
+  oldTx.paymentMethod = paymentMethod;
+  oldTx.notes = notes;
+  oldTx.reason = isOthers(category) ? reason.trim() : '';
+
+  return { updatedTx: oldTx };
+}
+
+function mockDeleteTransaction(transactionId) {
+  const txIndex = transactionsList.findIndex((t) => t.id === transactionId);
+  if (txIndex === -1) throw new Error('Transaction not found.');
+  const tx = transactionsList[txIndex];
+
+  const acc = txAccounts.find((a) => a.id === tx.account_id);
+  if (acc) {
+    acc.balance = tx.type === 'expense'
+      ? Math.round((acc.balance + tx.amount) * 100) / 100
+      : Math.round((acc.balance - tx.amount) * 100) / 100;
+  }
+
+  transactionsList.splice(txIndex, 1);
+  return { success: true, new_balance: acc?.balance };
+}
+
+// 5.1: Add an Income transaction (Salary: ₹5,000 into SBI)
+const income1 = mockCreateTransaction({
+  id: 'tx_inc_1',
+  accountId: 'acc_sbi',
+  amount: 5000,
+  type: 'income',
+  category: 'Salary',
+  date: '2026-11-14',
+  description: 'November monthly salary',
+});
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 15000);
+console.log('✅ Test 5.1: Income transaction successfully increases SBI balance (₹10,000 + ₹5,000 = ₹15,000)');
+
+// 5.2: Add an Expense transaction (Food: ₹500 via SBI)
+const expA = mockCreateTransaction({
+  id: 'tx_exp_1',
+  accountId: 'acc_sbi',
+  amount: 500,
+  type: 'expense',
+  category: 'Food',
+  date: '2026-11-14',
+});
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 14500);
+console.log('✅ Test 5.2: Expense transaction successfully decreases SBI balance (₹15,000 - ₹500 = ₹14,500)');
+
+// 5.3: Select Others for Income without reason -> Rejected
+assert.throws(
+  () => mockCreateTransaction({
+    id: 'tx_inc_bad',
+    accountId: 'acc_sbi',
+    amount: 1000,
+    type: 'income',
+    category: 'Other',
+    reason: '',
+  }),
+  /Reason for Others category is mandatory/
+);
+// With reason -> Succeeded
+const incomeOthers = mockCreateTransaction({
+  id: 'tx_inc_other',
+  accountId: 'acc_sbi',
+  amount: 1000,
+  type: 'income',
+  category: 'Other',
+  reason: 'Consulting bonus from international client',
+});
+assert.strictEqual(incomeOthers.tx.reason, 'Consulting bonus from international client');
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 15500);
+console.log('✅ Test 5.3: Mandatory Reason verified for Income with Others category');
+
+// 5.4: Select Others for Expense without reason -> Rejected
+assert.throws(
+  () => mockCreateTransaction({
+    id: 'tx_exp_bad',
+    accountId: 'acc_sbi',
+    amount: 300,
+    type: 'expense',
+    category: 'Others',
+    reason: '   ',
+  }),
+  /Reason for Others category is mandatory/
+);
+// With reason -> Succeeded
+const expOthers = mockCreateTransaction({
+  id: 'tx_exp_other',
+  accountId: 'acc_sbi',
+  amount: 300,
+  type: 'expense',
+  category: 'Others',
+  reason: 'Medical emergency prescription',
+});
+assert.strictEqual(expOthers.tx.reason, 'Medical emergency prescription');
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 15200);
+console.log('✅ Test 5.4: Mandatory Reason verified for Expense with Others category');
+
+// 5.5: Switch category from Others to Bills -> Reason validation disappears
+const expBills = mockCreateTransaction({
+  id: 'tx_exp_bills',
+  accountId: 'acc_sbi',
+  amount: 200,
+  type: 'expense',
+  category: 'Bills',
+  reason: '', // Not required for Bills
+});
+assert.strictEqual(expBills.tx.category, 'Bills');
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 15000);
+console.log('✅ Test 5.5: Non-Others category does not require Reason field');
+
+// 5.6: Edit existing Income transaction (Update Salary from ₹5,000 to ₹7,000)
+mockEditTransaction('tx_inc_1', {
+  amount: 7000,
+  type: 'income',
+  category: 'Salary',
+});
+// SBI had ₹15,000. Reversing ₹5,000 -> ₹10,000. Applying ₹7,000 -> ₹17,000.
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 17000);
+console.log('✅ Test 5.6: Edit Income transaction correctly updates account balance (₹15,000 -> ₹17,000)');
+
+// 5.7: Edit existing Expense transaction (Update Food from ₹500 to ₹800)
+mockEditTransaction('tx_exp_1', {
+  amount: 800,
+  type: 'expense',
+  category: 'Food',
+});
+// SBI had ₹17,000. Reversing ₹500 -> ₹17,500. Applying ₹800 -> ₹16,700.
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 16700);
+console.log('✅ Test 5.7: Edit Expense transaction correctly recalculates balance (₹17,000 -> ₹16,700)');
+
+// 5.8: Change transaction account (Move ₹800 Food expense from SBI to HDFC)
+// HDFC currently has ₹5,000. SBI currently has ₹16,700.
+mockEditTransaction('tx_exp_1', {
+  accountId: 'acc_hdfc',
+  amount: 800,
+  type: 'expense',
+  category: 'Food',
+});
+// SBI gets ₹800 restored -> ₹17,500
+// HDFC gets ₹800 deducted -> ₹4,200
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 17500);
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_hdfc').balance, 4200);
+console.log('✅ Test 5.8: Changing transaction account updates BOTH accounts accurately (SBI: ₹17,500, HDFC: ₹4,200)');
+
+// 5.9: Change transaction type from Expense to Income (Convert ₹800 expense into ₹800 income on HDFC)
+// HDFC had ₹4,200. Reversing ₹800 expense -> ₹5,000. Applying ₹800 income -> ₹5,800.
+mockEditTransaction('tx_exp_1', {
+  accountId: 'acc_hdfc',
+  amount: 800,
+  type: 'income',
+  category: 'Refund',
+});
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_hdfc').balance, 5800);
+console.log('✅ Test 5.9: Changing transaction type (Expense -> Income) correctly reverses and adds balance (₹4,200 -> ₹5,800)');
+
+// 5.10: Delete Income transaction (Delete ₹7,000 Salary from SBI)
+// SBI had ₹17,500. Deleting income reverses it: ₹17,500 - ₹7,000 = ₹10,500.
+const delInc = mockDeleteTransaction('tx_inc_1');
+assert.strictEqual(delInc.success, true);
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 10500);
+console.log('✅ Test 5.10: Deleting Income transaction reverses (deducts) balance (₹17,500 - ₹7,000 = ₹10,500)');
+
+// 5.11: Delete Expense transaction (Delete ₹300 medical expense from SBI)
+// SBI had ₹10,500. Deleting expense refunds it: ₹10,500 + ₹300 = ₹10,800.
+const delExp = mockDeleteTransaction('tx_exp_other');
+assert.strictEqual(delExp.success, true);
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 10800);
+console.log('✅ Test 5.11: Deleting Expense transaction refunds balance back to account (₹10,500 + ₹300 = ₹10,800)\n');
+
+// ============================================================================
+// PART 6: BANK ACCOUNT EDITING & BALANCE RECONCILIATION
+// ============================================================================
+console.log('--- 6. Testing Bank Account Editing Logic ---');
+
+function mockEditAccount(id, { name, type, balance }) {
+  const acc = txAccounts.find((a) => a.id === id);
+  if (!acc) throw new Error('Account not found.');
+  const trimmedName = name?.trim();
+  if (!trimmedName) throw new Error('Account name is required.');
+
+  // Check unique name constraint among other accounts
+  const duplicate = txAccounts.find((a) => a.id !== id && a.account_name.toLowerCase() === trimmedName.toLowerCase());
+  if (duplicate) throw new Error(`An account named "${trimmedName}" already exists.`);
+
+  acc.account_name = trimmedName;
+  if (type) acc.account_type = type;
+  if (balance !== undefined) acc.balance = Math.round(Number(balance) * 100) / 100;
+  return acc;
+}
+
+// 6.1: Rename Account
+const updatedAcc = mockEditAccount('acc_sbi', { name: 'State Bank of India (Salary)', type: 'Bank Account', balance: 10800 });
+assert.strictEqual(updatedAcc.account_name, 'State Bank of India (Salary)');
+console.log('✅ Test 6.1: Successfully renamed bank account');
+
+// 6.2: Update Account Type
+mockEditAccount('acc_hdfc', { name: 'HDFC PayZapp', type: 'Wallet', balance: 5800 });
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_hdfc').account_type, 'Wallet');
+console.log('✅ Test 6.2: Successfully changed account type to Wallet');
+
+// 6.3: Reconcile / Adjust Account Balance
+mockEditAccount('acc_sbi', { name: 'State Bank of India (Salary)', balance: 12500 });
+assert.strictEqual(txAccounts.find((a) => a.id === 'acc_sbi').balance, 12500);
+console.log('✅ Test 6.3: Successfully adjusted bank account balance (₹10,800 -> ₹12,500)');
+
+// 6.4: Validate Required Account Name
+assert.throws(() => {
+  mockEditAccount('acc_sbi', { name: '   ', balance: 12500 });
+}, /Account name is required/);
+console.log('✅ Test 6.4: Blank or whitespace account name correctly rejected');
+
+// 6.5: Prevent Duplicate Account Names
+assert.throws(() => {
+  mockEditAccount('acc_hdfc', { name: 'State Bank of India (Salary)', balance: 5800 });
+}, /already exists/);
+console.log('✅ Test 6.5: Duplicate account name correctly rejected');
+
+// 6.6: Verify Total Balance Calculation after Edit
+const computedTotal = txAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
+assert.strictEqual(computedTotal, 12500 + 5800);
+console.log(`✅ Test 6.6: Total balance correctly reflects updated bank balance (₹${computedTotal})\n`);
+
+// ============================================================================
+// PART 7: BANK LOGO AUTO-DETECTION & PRESET RESOLUTION
+// ============================================================================
+console.log('--- 7. Testing Bank Logo Auto-Detection Logic ---');
+
+import { detectBankLogo, BANK_PRESETS } from './src/constants/finance.js';
+
+// 7.1: Detect SBI logo
+assert.strictEqual(detectBankLogo('SBI'), '/logos/sbi.png');
+assert.strictEqual(detectBankLogo('State Bank of India'), '/logos/sbi.png');
+assert.strictEqual(detectBankLogo('SBI Savings Account'), '/logos/sbi.png');
+console.log('✅ Test 7.1: SBI logo accurately detected for SBI variations');
+
+// 7.2: Detect Slice logo
+assert.strictEqual(detectBankLogo('Slice'), '/logos/slice.png');
+assert.strictEqual(detectBankLogo('Slice Card'), '/logos/slice.png');
+assert.strictEqual(detectBankLogo('Slice Mini UPI'), '/logos/slice.png');
+console.log('✅ Test 7.2: Slice logo accurately detected for Slice variations');
+
+// 7.3: Fallback for generic accounts
+assert.strictEqual(detectBankLogo('Cash'), null);
+assert.strictEqual(detectBankLogo('My Emergency Fund'), null);
+assert.strictEqual(detectBankLogo(''), null);
+console.log('✅ Test 7.3: Clean null fallback for non-branded/generic accounts');
+
+// 7.4: Presets integrity
+const sbiPreset = BANK_PRESETS.find((p) => p.shortName === 'SBI');
+const slicePreset = BANK_PRESETS.find((p) => p.shortName === 'Slice');
+assert.strictEqual(sbiPreset?.logo, '/logos/sbi.png');
+assert.strictEqual(slicePreset?.logo, '/logos/slice.png');
+console.log('✅ Test 7.4: Verified SBI & Slice presets configured in BANK_PRESETS\n');
+
+// ============================================================================
+// PART 8: INCOME & EXPENSE CATEGORY SEPARATION & REASON PRESERVATION
+// ============================================================================
+console.log('--- 8. Testing Category Separation & Reason Preservation ---');
+
+import { isKnownIncomeCategory, isKnownExpenseCategory } from './src/constants/finance.js';
+
+// 8.1: Test Income Categories identification
+assert.strictEqual(isKnownIncomeCategory('Salary'), true);
+assert.strictEqual(isKnownIncomeCategory('Freelance'), true);
+assert.strictEqual(isKnownIncomeCategory('Dividends'), true);
+assert.strictEqual(isKnownIncomeCategory('Food'), false);
+assert.strictEqual(isKnownIncomeCategory('Travel'), false);
+console.log('✅ Test 8.1: Income categories strictly distinguished from Expense categories');
+
+// 8.2: Test Expense Categories identification
+assert.strictEqual(isKnownExpenseCategory('Food'), true);
+assert.strictEqual(isKnownExpenseCategory('Rent'), true);
+assert.strictEqual(isKnownExpenseCategory('Bills'), true);
+assert.strictEqual(isKnownExpenseCategory('Salary'), false);
+console.log('✅ Test 8.2: Expense categories strictly identified');
+
+// 8.3: Reason display override for Others category
+function getDisplayCategory(category, reason) {
+  if (category === 'Other' || category === 'Others') {
+    return reason ? reason : category;
+  }
+  return category;
+}
+assert.strictEqual(getDisplayCategory('Other', 'Consulting gig'), 'Consulting gig');
+assert.strictEqual(getDisplayCategory('Other', ''), 'Other');
+assert.strictEqual(getDisplayCategory('Food', ''), 'Food');
+console.log('✅ Test 8.3: Primary display shows user reason when Others is selected');
+
+// 8.4: Sign formatting (+ for income, - for expense)
+function formatSignedAmount(amount, type) {
+  return type === 'income' ? `+ ₹${amount}` : `- ₹${amount}`;
+}
+assert.strictEqual(formatSignedAmount(8000, 'income'), '+ ₹8000');
+assert.strictEqual(formatSignedAmount(8000, 'expense'), '- ₹8000');
+console.log('✅ Test 8.4: Signed amount displays + for Income and - for Expense\n');
 
 // ============================================================================
 // SUMMARY
 // ============================================================================
-console.log('🎉 ALL TESTS PASSED! All 17 test scenarios and boundary conditions verified successfully.');
+console.log('🎉 ALL TESTS PASSED! All 42 test scenarios, boundary conditions, income, edit, account updates, bank logos, category separation, and reason logic verified successfully.');

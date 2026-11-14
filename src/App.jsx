@@ -8,26 +8,66 @@ import BankAccountsSection from './components/BankAccountsSection';
 import RecentExpensesSection from './components/RecentExpensesSection';
 import AnalyticsView from './components/AnalyticsView';
 import AddAccountModal from './components/AddAccountModal';
-import AddExpenseModal from './components/AddExpenseModal';
+import TransactionModal from './components/TransactionModal';
+import TransactionDetailModal from './components/TransactionDetailModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import AuthView from './components/AuthView';
 import { Plus, WalletCards, Loader2, AlertTriangle, LayoutDashboard, BarChart3 } from 'lucide-react';
 
 function DashboardView() {
-  const { deleteAccount, deleteExpense, error: financeError } = useFinance();
+  const { deleteAccount, deleteTransaction, error: financeError } = useFinance();
 
   // Navigation View: 'dashboard' | 'analytics'
   const [currentView, setCurrentView] = useState('dashboard');
 
   // Modals visibility state
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
-  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [accountModalData, setAccountModalData] = useState(null); // null for new, account object for edit
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [transactionModalData, setTransactionModalData] = useState(null); // null for new, tx object for edit
+  const [transactionDefaultType, setTransactionDefaultType] = useState('expense'); // 'expense' | 'income'
+
+  // View details modal state
+  const [viewingTransaction, setViewingTransaction] = useState(null);
 
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState(null); // { item, type: 'expense' | 'account' }
 
-  const handleRequestDeleteExpense = (expense) => {
-    setDeleteTarget({ item: expense, type: 'expense' });
+  // Handlers for Add/Edit Account
+  const handleOpenAddAccount = () => {
+    setAccountModalData(null);
+    setIsAddAccountOpen(true);
+  };
+
+  const handleOpenEditAccount = (account) => {
+    setAccountModalData(account);
+    setIsAddAccountOpen(true);
+  };
+
+  // Handlers for Add/Edit Transaction
+  const handleOpenAddExpense = () => {
+    setTransactionModalData(null);
+    setTransactionDefaultType('expense');
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleOpenAddIncome = () => {
+    setTransactionModalData(null);
+    setTransactionDefaultType('income');
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleOpenEditTransaction = (tx) => {
+    setTransactionModalData(tx);
+    setIsTransactionModalOpen(true);
+  };
+
+  const handleViewTransaction = (tx) => {
+    setViewingTransaction(tx);
+  };
+
+  const handleRequestDeleteExpense = (transaction) => {
+    setDeleteTarget({ item: transaction, type: 'expense' });
   };
 
   const handleRequestDeleteAccount = (account) => {
@@ -38,7 +78,7 @@ function DashboardView() {
     if (!deleteTarget) return;
     try {
       if (deleteTarget.type === 'expense') {
-        await deleteExpense(id);
+        await deleteTransaction(id);
       } else if (deleteTarget.type === 'account') {
         await deleteAccount(id);
       }
@@ -53,8 +93,8 @@ function DashboardView() {
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Top Navbar */}
       <Navbar
-        onOpenAddAccount={() => setIsAddAccountOpen(true)}
-        onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+        onOpenAddAccount={handleOpenAddAccount}
+        onOpenAddExpense={handleOpenAddExpense}
         currentView={currentView}
         onViewChange={setCurrentView}
       />
@@ -84,21 +124,26 @@ function DashboardView() {
         {/* View Switcher: Dashboard View vs Analytics & Reports View */}
         {currentView === 'dashboard' ? (
           <>
-            {/* 1. Dashboard Overview Cards */}
+            {/* 1. Dashboard Overview Cards (Total Balance, Total Income, Total Expenses, Net Savings) */}
             <DashboardCards
-              onOpenAddAccount={() => setIsAddAccountOpen(true)}
-              onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+              onOpenAddAccount={handleOpenAddAccount}
+              onOpenAddExpense={handleOpenAddExpense}
+              onOpenAddIncome={handleOpenAddIncome}
             />
 
             {/* 2. Bank Accounts Section */}
             <BankAccountsSection
-              onOpenAddAccount={() => setIsAddAccountOpen(true)}
+              onOpenAddAccount={handleOpenAddAccount}
+              onOpenEditAccount={handleOpenEditAccount}
               onRequestDeleteAccount={handleRequestDeleteAccount}
             />
 
-            {/* 3. Recent Expenses Section */}
+            {/* 3. Recent Transactions Section (Expenses & Income with Filters, Search, Edit, View, Delete) */}
             <RecentExpensesSection
-              onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+              onOpenAddExpense={handleOpenAddExpense}
+              onOpenAddIncome={handleOpenAddIncome}
+              onOpenEditTransaction={handleOpenEditTransaction}
+              onViewTransaction={handleViewTransaction}
               onRequestDeleteExpense={handleRequestDeleteExpense}
             />
           </>
@@ -137,12 +182,13 @@ function DashboardView() {
           <span className="text-[10px]">Dashboard</span>
         </button>
 
-        {/* Center Quick Add Expense Button */}
+        {/* Center Quick Add Transaction Button */}
         <button
           type="button"
-          onClick={() => setIsAddExpenseOpen(true)}
+          onClick={handleOpenAddExpense}
           className="flex items-center justify-center w-12 h-12 -mt-5 rounded-full bg-brand-600 active:bg-brand-700 text-white shadow-lg shadow-brand-600/30 active:scale-95 transition-transform cursor-pointer"
-          aria-label="Add Expense"
+          aria-label="Add Transaction"
+          title="Add Transaction"
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -164,15 +210,41 @@ function DashboardView() {
       {/* Modals */}
       <AddAccountModal
         isOpen={isAddAccountOpen}
-        onClose={() => setIsAddAccountOpen(false)}
+        onClose={() => {
+          setIsAddAccountOpen(false);
+          setAccountModalData(null);
+        }}
+        accountToEdit={accountModalData}
       />
 
-      <AddExpenseModal
-        isOpen={isAddExpenseOpen}
-        onClose={() => setIsAddExpenseOpen(false)}
-        onOpenAddAccount={() => setIsAddAccountOpen(true)}
+      {/* Unified Transaction Modal (Add Expense / Add Income / Edit Transaction with Others reason) */}
+      <TransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={() => {
+          setIsTransactionModalOpen(false);
+          setTransactionModalData(null);
+        }}
+        onOpenAddAccount={handleOpenAddAccount}
+        initialData={transactionModalData}
+        defaultType={transactionDefaultType}
       />
 
+      {/* Transaction Details Modal */}
+      <TransactionDetailModal
+        isOpen={!!viewingTransaction}
+        transaction={viewingTransaction}
+        onClose={() => setViewingTransaction(null)}
+        onEdit={(tx) => {
+          setViewingTransaction(null);
+          handleOpenEditTransaction(tx);
+        }}
+        onDelete={(tx) => {
+          setViewingTransaction(null);
+          handleRequestDeleteExpense(tx);
+        }}
+      />
+
+      {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
@@ -202,7 +274,7 @@ function MainContent() {
     );
   }
 
-  // User is not signed in -> show AuthView (Sign In / Forgot Password) by default
+  // Not authenticated -> show Sign In View immediately
   if (!user) {
     return <AuthView />;
   }

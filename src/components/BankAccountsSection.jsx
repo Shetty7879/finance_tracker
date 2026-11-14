@@ -2,9 +2,14 @@ import React from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatINR, ACCOUNT_TYPE_META } from '../constants/finance';
 import DynamicIcon from './DynamicIcon';
-import { Plus, Trash2, Building2 } from 'lucide-react';
+import AccountLogo from './AccountLogo';
+import { Plus, Trash2, Building2, Edit2 } from 'lucide-react';
 
-export default function BankAccountsSection({ onOpenAddAccount, onRequestDeleteAccount }) {
+export default function BankAccountsSection({
+  onOpenAddAccount,
+  onOpenEditAccount,
+  onRequestDeleteAccount,
+}) {
   const { accounts } = useFinance();
 
   return (
@@ -73,12 +78,8 @@ export default function BankAccountsSection({ onOpenAddAccount, onRequestDeleteA
                 {/* Header: Name + Account Type Badge */}
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center space-x-2.5">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-tr ${meta.color} text-white shadow-sm flex-shrink-0`}
-                      >
-                        <DynamicIcon name={meta.icon} className="w-4 h-4" />
-                      </div>
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <AccountLogo account={account} size="md" />
                       <div className="min-w-0">
                         <h4 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate" title={account.name}>
                           {account.name}
@@ -91,16 +92,30 @@ export default function BankAccountsSection({ onOpenAddAccount, onRequestDeleteA
                       </div>
                     </div>
 
-                    {/* Delete Account button */}
-                    <button
-                      type="button"
-                      onClick={() => onRequestDeleteAccount(account)}
-                      title="Delete account"
-                      className="opacity-60 hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span className="sr-only">Delete</span>
-                    </button>
+                    {/* Actions: Edit & Delete Account */}
+                    <div className="flex items-center space-x-1 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onOpenEditAccount && onOpenEditAccount(account)}
+                        title={`Edit ${account.name}`}
+                        aria-label={`Edit ${account.name}`}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition-colors"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span className="sr-only">Edit {account.name}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onRequestDeleteAccount(account)}
+                        title={`Delete ${account.name}`}
+                        aria-label={`Delete ${account.name}`}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="sr-only">Delete {account.name}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 

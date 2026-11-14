@@ -6,6 +6,7 @@
 
 // Category Palette - Accessible, modern, and consistent with FridayTrack branding
 export const CATEGORY_COLORS = {
+  // Expense Categories
   Food: '#10b981', // emerald-500
   Shopping: '#8b5cf6', // purple-500
   Travel: '#0ea5e9', // sky-500
@@ -15,18 +16,38 @@ export const CATEGORY_COLORS = {
   Health: '#14b8a6', // teal-500
   Education: '#6366f1', // indigo-500
   Other: '#64748b', // slate-500
+  Others: '#64748b',
+
+  // Income Categories
+  Salary: '#059669', // emerald-600
+  Freelance: '#0d9488', // teal-600
+  'Business Income': '#2563eb', // blue-600
+  'Investment Returns': '#16a34a', // green-600
+  Dividends: '#7c3aed', // violet-600
+  Interest: '#d97706', // amber-600
+  Refund: '#0891b2', // cyan-600
+  Gift: '#c026d3', // fuchsia-600
 };
 
 export const CATEGORY_ICONS = {
   Food: 'Utensils',
   Shopping: 'ShoppingBag',
-  Travel: 'Plane',
+  Travel: 'Compass',
   Bills: 'Receipt',
   Rent: 'Home',
-  Entertainment: 'Tv',
+  Entertainment: 'Film',
   Health: 'HeartPulse',
   Education: 'GraduationCap',
-  Other: 'MoreHorizontal',
+  Other: 'Tag',
+  Others: 'Tag',
+  Salary: 'Building2',
+  Freelance: 'Laptop',
+  'Business Income': 'Store',
+  'Investment Returns': 'TrendingUp',
+  Dividends: 'Coins',
+  Interest: 'Percent',
+  Refund: 'RotateCcw',
+  Gift: 'Gift',
 };
 
 /**
@@ -70,8 +91,7 @@ export function getDateRangeBounds(filter, customStart = '', customEnd = '') {
       };
 
     case 'this_week': {
-      // Start of current week (Monday)
-      const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday
+      const dayOfWeek = now.getDay();
       const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       const monday = new Date(now);
       monday.setDate(now.getDate() - diffToMonday);
@@ -157,12 +177,12 @@ export function getDateRangeBounds(filter, customStart = '', customEnd = '') {
 }
 
 /**
- * Filter expenses matching date bounds
+ * Filter transactions matching date bounds
  */
-export function filterExpensesByDate(expenses, startDateStr, endDateStr) {
-  if (!Array.isArray(expenses)) return [];
-  return expenses.filter((e) => {
-    const d = e.expense_date || (e.created_at ? e.created_at.slice(0, 10) : '');
+export function filterExpensesByDate(transactions, startDateStr, endDateStr) {
+  if (!Array.isArray(transactions)) return [];
+  return transactions.filter((e) => {
+    const d = e.expense_date || e.date || (e.created_at ? e.created_at.slice(0, 10) : '');
     return d >= startDateStr && d <= endDateStr;
   });
 }
@@ -170,35 +190,40 @@ export function filterExpensesByDate(expenses, startDateStr, endDateStr) {
 /**
  * Calculate Summary KPI Cards
  */
-export function calculateFinancialSummary(accounts, expenses, filteredExpenses, rangeInfo) {
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+export function calculateFinancialSummary(accounts, allTransactions, filteredTransactions, rangeInfo) {
+  const expenseTransactions = filteredTransactions.filter(
+    (t) => (t.type || t.transaction_type) !== 'income'
+  );
+  const incomeTransactions = filteredTransactions.filter(
+    (t) => (t.type || t.transaction_type) === 'income'
+  );
+
+  const totalExpenses = expenseTransactions.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  const loggedIncome = incomeTransactions.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   
   // Total current bank balance across all accounts
   const totalBankBalance = accounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
   
-  // Total lifetime expenses deducted
-  const lifetimeExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-  
-  // Total capital funded into accounts = current balance + lifetime expenses
-  const totalFunding = totalBankBalance + lifetimeExpenses;
-  
-  // Effective Income for period:
-  // If period is all-time or starting funds, initial deposits constitute incoming capital.
-  // In personal finance tracking with accounts, total income represents account funding.
-  const totalIncome = totalFunding;
+  // Lifetime expenses deducted
+  const lifetimeExpenses = allTransactions
+    .filter((t) => (t.type || t.transaction_type) !== 'income')
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+  // If explicit income logged in this period, use it; otherwise fallback to account capital
+  const totalIncome = loggedIncome > 0 ? loggedIncome : (totalBankBalance + lifetimeExpenses);
   
   // Net Savings = Total Income - Total Expenses
-  const netSavings = Math.max(0, totalIncome - totalExpenses);
+  const netSavings = totalIncome - totalExpenses;
   
   // Savings Rate = (Net Savings / Total Income) * 100
-  const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
+  const savingsRate = totalIncome > 0 && netSavings > 0 ? (netSavings / totalIncome) * 100 : 0;
   
   // Average Daily Spending = Total Expenses / Days in Period
   const days = Math.max(1, rangeInfo?.days || 1);
   const avgDailySpending = totalExpenses / days;
 
   // Highest spending category in this period
-  const catBreakdown = getCategoryBreakdown(filteredExpenses);
+  const catBreakdown = getCategoryBreakdown(expenseTransactions);
   const highestCategory = catBreakdown.length > 0 ? catBreakdown[0] : null;
 
   return {
@@ -216,13 +241,19 @@ export function calculateFinancialSummary(accounts, expenses, filteredExpenses, 
 /**
  * Group expenses by category and compute percentages and counts
  */
-export function getCategoryBreakdown(filteredExpenses) {
-  if (!Array.isArray(filteredExpenses) || filteredExpenses.length === 0) return [];
+export function getCategoryBreakdown(filteredTransactions) {
+  if (!Array.isArray(filteredTransactions) || filteredTransactions.length === 0) return [];
 
-  const total = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+  // Focus breakdown on expense transactions
+  const expenseOnly = filteredTransactions.filter(
+    (t) => (t.type || t.transaction_type) !== 'income'
+  );
+  const items = expenseOnly.length > 0 ? expenseOnly : filteredTransactions;
+
+  const total = items.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const catMap = {};
 
-  filteredExpenses.forEach((e) => {
+  items.forEach((e) => {
     const cat = e.category || 'Other';
     const amt = Number(e.amount) || 0;
     if (!catMap[cat]) {
@@ -243,17 +274,15 @@ export function getCategoryBreakdown(filteredExpenses) {
     percentage: total > 0 ? Math.round((item.amount / total) * 1000) / 10 : 0,
   }));
 
-  // Sort descending by total amount
   return list.sort((a, b) => b.amount - a.amount);
 }
 
 /**
  * Generate daily spending series for bar chart
  */
-export function getDailySpendingSeries(filteredExpenses, startDateStr, endDateStr) {
+export function getDailySpendingSeries(filteredTransactions, startDateStr, endDateStr) {
   const dayMap = {};
 
-  // Initialize all days in range with 0 if range <= 31 days
   const startD = new Date(startDateStr);
   const endD = new Date(endDateStr);
   const diffDays = Math.round((endD - startD) / (1000 * 60 * 60 * 24)) + 1;
@@ -267,9 +296,10 @@ export function getDailySpendingSeries(filteredExpenses, startDateStr, endDateSt
     }
   }
 
-  // Populate actual amounts
-  (filteredExpenses || []).forEach((e) => {
-    const d = e.expense_date || (e.created_at ? e.created_at.slice(0, 10) : '');
+  // Populate expense amounts
+  (filteredTransactions || []).forEach((e) => {
+    if ((e.type || e.transaction_type) === 'income') return; // daily chart focuses on expenditure run-rate
+    const d = e.expense_date || e.date || (e.created_at ? e.created_at.slice(0, 10) : '');
     if (d >= startDateStr && d <= endDateStr) {
       dayMap[d] = (dayMap[d] || 0) + (Number(e.amount) || 0);
     }
@@ -292,36 +322,43 @@ export function getDailySpendingSeries(filteredExpenses, startDateStr, endDateSt
 /**
  * Group expenses by month (YYYY-MM) for line trend charts and MoM comparisons
  */
-export function getMonthlyTrends(expenses) {
-  if (!Array.isArray(expenses)) return [];
+export function getMonthlyTrends(allTransactions) {
+  if (!Array.isArray(allTransactions)) return [];
 
   const monthMap = {};
-  expenses.forEach((e) => {
-    const d = e.expense_date || (e.created_at ? e.created_at.slice(0, 10) : '');
-    const m = d.slice(0, 7); // YYYY-MM
-    if (m) {
-      monthMap[m] = (monthMap[m] || 0) + (Number(e.amount) || 0);
-    }
+  allTransactions.forEach((e) => {
+    if ((e.type || e.transaction_type) === 'income') return;
+    const d = e.expense_date || e.date || (e.created_at ? e.created_at.slice(0, 10) : '');
+    if (!d) return;
+    const monthKey = d.slice(0, 7); // YYYY-MM
+    monthMap[monthKey] = (monthMap[monthKey] || 0) + (Number(e.amount) || 0);
   });
 
   const sortedMonths = Object.keys(monthMap).sort();
-  return sortedMonths.map((m, idx) => {
-    const [year, month] = m.split('-');
-    const dateObj = new Date(Number(year), Number(month) - 1, 1);
-    const label = dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-    const amount = Math.round(monthMap[m] * 100) / 100;
-    
-    // MoM Calculation
+  if (sortedMonths.length === 0) {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    return [{
+      monthKey: currentMonth,
+      label: new Date().toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      amount: 0,
+      momChange: 0,
+    }];
+  }
+
+  return sortedMonths.map((mKey, idx) => {
+    const amount = Math.round(monthMap[mKey] * 100) / 100;
+    const prevAmount = idx > 0 ? monthMap[sortedMonths[idx - 1]] : null;
     let momChange = 0;
-    if (idx > 0) {
-      const prev = monthMap[sortedMonths[idx - 1]];
-      if (prev > 0) {
-        momChange = Math.round(((amount - prev) / prev) * 1000) / 10;
-      }
+    if (prevAmount !== null && prevAmount > 0) {
+      momChange = Math.round(((amount - prevAmount) / prevAmount) * 100);
     }
 
+    const [year, month] = mKey.split('-');
+    const labelDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+    const label = labelDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+
     return {
-      monthKey: m,
+      monthKey: mKey,
       label,
       amount,
       momChange,
@@ -330,129 +367,93 @@ export function getMonthlyTrends(expenses) {
 }
 
 /**
- * Compute Account-wise Analytics
+ * Account-wise spending & balance analytics
  */
-export function getAccountAnalytics(accounts, expenses, filteredExpenses) {
+export function getAccountAnalytics(accounts, allTransactions, filteredTransactions) {
   if (!Array.isArray(accounts)) return [];
 
-  const totalPeriodExpenses = (filteredExpenses || []).reduce(
-    (sum, e) => sum + (Number(e.amount) || 0),
-    0
-  );
+  const totalPeriodExpense = filteredTransactions
+    .filter((t) => (t.type || t.transaction_type) !== 'income')
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   return accounts.map((acc) => {
-    // Total expenses for this account in the filtered period
-    const accountPeriodExpenses = (filteredExpenses || [])
-      .filter((e) => e.account_id === acc.id)
+    const outgoing = filteredTransactions
+      .filter((e) => (e.accountId === acc.id || e.account_id === acc.id) && (e.type || e.transaction_type) !== 'income')
       .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    // Lifetime expenses for this account
-    const lifetimeAccExpenses = (expenses || [])
-      .filter((e) => e.account_id === acc.id)
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-
-    const currentBalance = Number(acc.balance) || 0;
-    const initialDeposit = currentBalance + lifetimeAccExpenses;
-
-    const spendingShare = totalPeriodExpenses > 0
-      ? Math.round((accountPeriodExpenses / totalPeriodExpenses) * 1000) / 10
+    const spendingShare = totalPeriodExpense > 0
+      ? Math.round((outgoing / totalPeriodExpense) * 1000) / 10
       : 0;
 
     return {
       id: acc.id,
-      name: acc.account_name,
-      type: acc.account_type,
-      currentBalance,
-      initialDeposit,
-      outgoing: Math.round(accountPeriodExpenses * 100) / 100,
+      name: acc.name || acc.account_name,
+      type: acc.type || acc.account_type,
+      currentBalance: Number(acc.balance) || 0,
+      outgoing: Math.round(outgoing * 100) / 100,
       spendingShare,
-      transactionCount: (filteredExpenses || []).filter((e) => e.account_id === acc.id).length,
     };
   });
 }
 
 /**
- * Generate Smart Financial Insights from actual transaction records
+ * Dynamic Automated Smart Insights
  */
 export function generateSmartInsights(summary, categoryBreakdown, dailySeries, monthlyTrends) {
   const insights = [];
 
-  // Insight 1: Highest spending category dominance
+  // Insight 1: Dominant Expense Category
   if (categoryBreakdown && categoryBreakdown.length > 0) {
     const top = categoryBreakdown[0];
-    if (top.percentage > 35) {
+    if (top.percentage >= 35) {
       insights.push({
         type: 'warning',
-        title: `Heavy ${top.category} Spending`,
-        description: `${top.category} represents ${top.percentage}% (${formatINR(top.amount)}) of your total expenses in this period. Consider establishing a dedicated limit.`,
+        title: `Heavy Spend in ${top.category}`,
+        description: `${top.category} accounts for ${top.percentage}% of your expenses (${formatINR(top.amount)}). Trimming this category will produce the highest immediate savings.`,
       });
     } else {
       insights.push({
-        type: 'info',
-        title: `Top Spending Category: ${top.category}`,
-        description: `Your highest expense was ${top.category} with ${formatINR(top.amount)} across ${top.count} transactions (${top.percentage}% of total).`,
-      });
-    }
-  }
-
-  // Insight 2: Peak Spending Day
-  if (dailySeries && dailySeries.length > 0) {
-    const sortedDays = [...dailySeries].sort((a, b) => b.amount - a.amount);
-    const peak = sortedDays[0];
-    if (peak && peak.amount > 0) {
-      insights.push({
-        type: 'neutral',
-        title: `Peak Daily Spending: ${peak.fullLabel || peak.label}`,
-        description: `Your highest daily expenditure in this period was ${formatINR(peak.amount)} on ${peak.date}.`,
-      });
-    }
-  }
-
-  // Insight 3: Savings Rate Evaluation
-  if (summary && summary.totalIncome > 0) {
-    if (summary.savingsRate >= 40) {
-      insights.push({
         type: 'positive',
-        title: 'Outstanding Savings Rate',
-        description: `Your current savings rate is ${summary.savingsRate}%, significantly outperforming the standard 20% financial benchmark.`,
-      });
-    } else if (summary.savingsRate < 20 && summary.totalExpenses > 0) {
-      insights.push({
-        type: 'warning',
-        title: 'Savings Rate Below 20% Target',
-        description: `Your savings rate sits at ${summary.savingsRate}%. Review discretionary categories like Shopping or Entertainment to bolster savings.`,
+        title: 'Balanced Category Distribution',
+        description: `Your highest expense is ${top.category} at ${top.percentage}%, reflecting healthy portfolio diversification across spending buckets.`,
       });
     }
   }
 
-  // Insight 4: Month-over-Month Trend
-  if (monthlyTrends && monthlyTrends.length >= 2) {
-    const currentMonth = monthlyTrends[monthlyTrends.length - 1];
-    const momChange = currentMonth.momChange;
-    if (momChange > 15) {
-      insights.push({
-        type: 'warning',
-        title: `Spending Surge (+${momChange}%)`,
-        description: `Your expenses in ${currentMonth.label} rose by ${momChange}% compared to the prior month.`,
-      });
-    } else if (momChange < -10) {
-      insights.push({
-        type: 'positive',
-        title: `Spending Cut (${momChange}%)`,
-        description: `Great discipline! Your spending in ${currentMonth.label} is down by ${Math.abs(momChange)}% compared to the prior month.`,
-      });
-    }
-  }
-
-  // Insight 5: Average Daily Spending Run-Rate
-  if (summary && summary.avgDailySpending > 0) {
+  // Insight 2: Daily Run-Rate context
+  if (summary.avgDailySpending > 0) {
+    const monthlyProjection = summary.avgDailySpending * 30;
     insights.push({
-      type: 'info',
-      title: 'Daily Run-Rate',
-      description: `Your average daily expenditure is ${formatINR(summary.avgDailySpending)}/day across ${summary.daysInPeriod} active days in this selection.`,
+      type: 'neutral',
+      title: 'Daily Spending Run-Rate',
+      description: `You are spending an average of ${formatINR(summary.avgDailySpending)} per day. Over a 30-day billing cycle, this projects to ${formatINR(monthlyProjection)}.`,
+    });
+  }
+
+  // Insight 3: Savings Health
+  if (summary.totalIncome > 0) {
+    if (summary.savingsRate >= 20) {
+      insights.push({
+        type: 'positive',
+        title: 'Strong Savings Rate',
+        description: `Your savings rate of ${summary.savingsRate}% meets the classic 50/30/20 benchmark (saving at least 20% of net incoming capital).`,
+      });
+    } else if (summary.savingsRate > 0) {
+      insights.push({
+        type: 'warning',
+        title: 'Savings Rate Below 20%',
+        description: `Your current savings rate is ${summary.savingsRate}%. Try identifying non-essential recurring bills to reach the 20% savings threshold.`,
+      });
+    }
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      type: 'neutral',
+      title: 'Real-Time Financial Intelligence',
+      description: 'As you log more daily transactions across multiple accounts, automated predictive insights and trajectory warnings will appear here.',
     });
   }
 
   return insights;
 }
-

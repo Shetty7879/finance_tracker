@@ -17,6 +17,8 @@ import DonutChart from './analytics/DonutChart';
 import DailyBarChart from './analytics/DailyBarChart';
 import MonthlyTrendChart from './analytics/MonthlyTrendChart';
 import IncomeExpenseComparison from './analytics/IncomeExpenseComparison';
+import AccountLogo from './AccountLogo';
+import { isOthersCategory } from '../constants/finance';
 
 import {
   Calendar,
@@ -479,9 +481,7 @@ export default function AnalyticsView() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs shadow-sm">
-                      <Wallet className="w-4 h-4" />
-                    </div>
+                    <AccountLogo name={acc.name} type={acc.type} size="sm" />
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                         {acc.name}
@@ -626,56 +626,94 @@ export default function AnalyticsView() {
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     <th className="pb-3 font-semibold">Date</th>
+                    <th className="pb-3 font-semibold">Type</th>
                     <th className="pb-3 font-semibold">Category</th>
                     <th className="pb-3 font-semibold">Account</th>
+                    <th className="pb-3 font-semibold">Reason / Description</th>
                     <th className="pb-3 font-semibold text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                  {drillDownTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 text-slate-600 dark:text-slate-300 font-medium">
-                        {tx.expense_date || (tx.created_at ? tx.created_at.slice(0, 10) : '')}
-                      </td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          {tx.category}
-                        </span>
-                      </td>
-                      <td className="py-3 text-slate-500 dark:text-slate-400 font-medium">
-                        {tx.account_name || tx.accounts?.account_name || 'Bank Account'}
-                      </td>
-                      <td className="py-3 text-right font-bold text-slate-900 dark:text-white">
-                        {formatINR(tx.amount)}
-                      </td>
-                    </tr>
-                  ))}
+                  {drillDownTransactions.map((tx) => {
+                    const isExp = (tx.type || tx.transaction_type) !== 'income';
+                    return (
+                      <tr key={tx.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 text-slate-600 dark:text-slate-300 font-medium">
+                          {tx.expense_date || tx.date || (tx.created_at ? tx.created_at.slice(0, 10) : '')}
+                        </td>
+                        <td className="py-3">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            isExp ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          }`}>
+                            {isExp ? 'Expense' : 'Income'}
+                          </span>
+                        </td>
+                        <td className="py-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {isOthersCategory(tx.category) && tx.reason ? tx.reason : tx.category}
+                          </span>
+                        </td>
+                        <td className="py-3 text-slate-500 dark:text-slate-400 font-medium">
+                          <div className="flex items-center space-x-1.5">
+                            <AccountLogo name={tx.accountName || tx.account_name || tx.accounts?.account_name} size="xs" />
+                            <span>{tx.accountName || tx.account_name || tx.accounts?.account_name || 'Bank Account'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 text-slate-500 dark:text-slate-400">
+                          {tx.reason ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold mr-1">
+                              Reason: {tx.reason}
+                            </span>
+                          ) : null}
+                          {tx.description ? (
+                            <span className="text-[11px] text-slate-500">{tx.description}</span>
+                          ) : (!tx.reason ? '-' : null)}
+                        </td>
+                        <td className={`py-3 text-right font-bold ${isExp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {isExp ? `- ${formatINR(tx.amount)}` : `+ ${formatINR(tx.amount)}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Card List View */}
             <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
-              {drillDownTransactions.map((tx) => (
-                <div key={tx.id} className="py-3 flex items-center justify-between">
-                  <div className="min-w-0 pr-2">
-                    <div className="flex items-center space-x-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        {tx.category}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                        {tx.account_name || tx.accounts?.account_name || 'Bank Account'}
-                      </span>
+              {drillDownTransactions.map((tx) => {
+                const isExp = (tx.type || tx.transaction_type) !== 'income';
+                return (
+                  <div key={tx.id} className="py-3 flex items-center justify-between">
+                    <div className="min-w-0 pr-2">
+                      <div className="flex items-center space-x-1.5">
+                        <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                          isExp ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        }`}>
+                          {isExp ? 'Exp' : 'Inc'}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {isOthersCategory(tx.category) && tx.reason ? tx.reason : tx.category}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                          {tx.accountName || tx.account_name || tx.accounts?.account_name || 'Bank Account'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                        <span>{tx.expense_date || tx.date || (tx.created_at ? tx.created_at.slice(0, 10) : '')}</span>
+                        {tx.reason && (
+                          <span className="text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[120px]">
+                            • Reason: {tx.reason}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 block mt-0.5">
-                      {tx.expense_date || (tx.created_at ? tx.created_at.slice(0, 10) : '')}
-                    </span>
+                    <div className={`font-bold text-sm whitespace-nowrap ${isExp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {isExp ? `- ${formatINR(tx.amount)}` : `+ ${formatINR(tx.amount)}`}
+                    </div>
                   </div>
-                  <div className="font-bold text-sm text-slate-900 dark:text-white whitespace-nowrap">
-                    {formatINR(tx.amount)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
