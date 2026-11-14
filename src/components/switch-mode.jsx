@@ -11,6 +11,7 @@ import {
   IoDesktopOutline,
 } from "react-icons/io5";
 import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
 
 export const SwitchMode = ({
   width,
@@ -40,7 +41,10 @@ export const SwitchMode = ({
     return (
       <div
         style={{ width: computedWidth, height }}
-        className={`rounded-full border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 animate-pulse ${className}`}
+        className={cn(
+          "rounded-full border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 animate-pulse",
+          className
+        )}
       />
     );
   }
@@ -60,7 +64,10 @@ export const SwitchMode = ({
     <div
       role="radiogroup"
       aria-label="Theme preference selector"
-      className={`relative inline-flex items-center rounded-full border transition-colors p-0.5 select-none shadow-inner ${className}`}
+      className={cn(
+        "relative inline-flex items-center rounded-full border transition-colors p-0.5 select-none shadow-inner",
+        className
+      )}
       style={{
         width: computedWidth,
         height,
