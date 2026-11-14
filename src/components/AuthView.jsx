@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useFinance } from '../context/FinanceContext';
-import { WalletCards, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Sun, Moon, Monitor, ArrowLeft } from 'lucide-react';
+import {
+  WalletCards,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+  Sun,
+  Moon,
+  Monitor,
+  ArrowLeft,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react';
 
 export default function AuthView() {
-  const { signIn, signUp, resetPassword, authError, setAuthError } = useAuth();
+  const { signIn, signUp, resetPassword, authError, setAuthError, isConfigured } = useAuth();
   const { theme, setTheme } = useFinance();
-  
+
   const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'forgot'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,13 +29,38 @@ export default function AuthView() {
   const [submitting, setSubmitting] = useState(false);
   const [localMessage, setLocalMessage] = useState(null);
 
+  const errorRef = useRef(null);
+
+  // Automatically ensure error is visible when one occurs
+  useEffect(() => {
+    if (authError && errorRef.current) {
+      try {
+        errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch {
+        // Fallback for browsers without smooth scroll support
+      }
+    }
+  }, [authError]);
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+
+    // Dismiss mobile soft keyboard so full UI and feedback are immediately visible
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
+
+    // Prevent duplicate submissions while in progress
+    if (submitting) return;
+
     setAuthError(null);
     setLocalMessage(null);
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
       setAuthError('Please enter your email address.');
       return;
     }
@@ -28,13 +68,14 @@ export default function AuthView() {
     if (mode === 'forgot') {
       setSubmitting(true);
       try {
-        await resetPassword(trimmedEmail);
+        await resetPassword(cleanEmail);
         setLocalMessage({
           type: 'success',
-          text: `A password reset link has been sent to ${trimmedEmail}. Please check your inbox.`,
+          text: `A password reset link has been sent to ${cleanEmail}. Please check your inbox.`,
         });
       } catch (err) {
         console.error('Password reset error:', err);
+        setAuthError(err.message || 'Failed to send password reset email.');
       } finally {
         setSubmitting(false);
       }
@@ -54,7 +95,7 @@ export default function AuthView() {
     setSubmitting(true);
     try {
       if (mode === 'signup') {
-        const data = await signUp(trimmedEmail, password);
+        const data = await signUp(cleanEmail, password);
         if (data?.user && !data.session) {
           setLocalMessage({
             type: 'info',
@@ -62,20 +103,22 @@ export default function AuthView() {
           });
         }
       } else {
-        await signIn(trimmedEmail, password);
+        await signIn(cleanEmail, password);
       }
     } catch (err) {
       console.error('Auth error:', err);
+      // NEVER fail silently: guarantee error state is visible to user
+      setAuthError(err.message || 'Authentication failed. Please check your credentials and try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors relative">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors relative">
       
       {/* Top Bar Theme Switcher */}
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
         <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-inner">
           <button
             type="button"
@@ -119,7 +162,7 @@ export default function AuthView() {
         </div>
       </div>
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md my-auto">
         
         {/* Brand Header */}
         <div className="text-center mb-6 sm:mb-8">
@@ -137,6 +180,19 @@ export default function AuthView() {
         {/* Auth Card */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-premium p-6 sm:p-8 animate-fade-in">
           
+          {/* Missing Backend Configuration Warning Banner */}
+          {!isConfigured && (
+            <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-200 text-xs flex items-start space-x-2.5 animate-fade-in">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">Hosting Configuration Notice</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  Supabase environment variables are missing in this deployment. Please add <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded font-mono font-semibold">VITE_SUPABASE_URL</code> and <code className="bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded font-mono font-semibold">VITE_SUPABASE_PUBLISHABLE_KEY</code> in your Vercel Project Settings &gt; Environment Variables.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Mode Switcher (Login / Signup) */}
           {mode !== 'forgot' ? (
             <div className="grid grid-cols-2 p-1 mb-6 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
@@ -147,7 +203,7 @@ export default function AuthView() {
                   setAuthError(null);
                   setLocalMessage(null);
                 }}
-                className={`py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
+                className={`py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer ${
                   mode === 'login'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -162,7 +218,7 @@ export default function AuthView() {
                   setAuthError(null);
                   setLocalMessage(null);
                 }}
-                className={`py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
+                className={`py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer ${
                   mode === 'signup'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -188,7 +244,7 @@ export default function AuthView() {
                   setAuthError(null);
                   setLocalMessage(null);
                 }}
-                className="inline-flex items-center text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline"
+                className="inline-flex items-center text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                 Back to Sign In
@@ -196,28 +252,12 @@ export default function AuthView() {
             </div>
           )}
 
-          {/* Error Banner */}
-          {authError && (
-            <div className="mb-4 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs flex items-start space-x-2.5 animate-fade-in">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>{authError}</span>
-            </div>
-          )}
-
-          {/* Success / Info Message */}
-          {localMessage && (
-            <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs flex items-start space-x-2.5 animate-fade-in">
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-500" />
-              <span>{localMessage.text}</span>
-            </div>
-          )}
-
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             
             {/* Email Field */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+              <label htmlFor="auth-email" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 Email Address
               </label>
               <div className="relative">
@@ -225,8 +265,15 @@ export default function AuthView() {
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
+                  id="auth-email"
+                  name="email"
                   type="email"
                   required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  inputMode="email"
+                  enterKeyHint="next"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -240,7 +287,7 @@ export default function AuthView() {
             {mode !== 'forgot' && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <label htmlFor="auth-password" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                     Password
                   </label>
                   {mode === 'login' && (
@@ -251,7 +298,7 @@ export default function AuthView() {
                         setAuthError(null);
                         setLocalMessage(null);
                       }}
-                      className="text-xs font-medium text-brand-600 hover:text-brand-500 dark:text-brand-400 hover:underline"
+                      className="text-xs font-medium text-brand-600 hover:text-brand-500 dark:text-brand-400 hover:underline cursor-pointer"
                     >
                       Forgot password?
                     </button>
@@ -262,19 +309,30 @@ export default function AuthView() {
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
+                    id="auth-password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
+                    enterKeyHint="go"
                     placeholder="At least 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
+                    className="w-full pl-10 pr-11 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
                     autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    tabIndex={-1}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPassword(!showPassword);
+                    }}
+                    className="absolute inset-y-0 right-0 pr-3.5 pl-2 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer z-10"
                     title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -282,22 +340,56 @@ export default function AuthView() {
               </div>
             )}
 
+            {/* Error Banner (placed directly adjacent to action button so it is never off-screen on mobile) */}
+            {authError && (
+              <div
+                ref={errorRef}
+                className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs flex items-start space-x-2.5 animate-fade-in"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span className="font-medium">{authError}</span>
+              </div>
+            )}
+
+            {/* Success / Info Message */}
+            {localMessage && (
+              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs flex items-start space-x-2.5 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-500" />
+                <span>{localMessage.text}</span>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
+              id="auth-submit-btn"
               type="submit"
               disabled={submitting}
-              className="w-full mt-2 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-500 active:scale-[0.98] transition-all shadow-subtle hover:shadow-glow disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ touchAction: 'manipulation' }}
+              className="w-full mt-3 flex items-center justify-center space-x-2 min-h-[48px] py-3 px-4 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-500 active:bg-brand-700 transition-colors shadow-subtle hover:shadow-glow disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer select-none"
             >
-              <span>
-                {submitting
-                  ? 'Please wait...'
-                  : mode === 'login'
-                  ? 'Sign In to FridayTrack'
-                  : mode === 'signup'
-                  ? 'Create Free Account'
-                  : 'Send Reset Link'}
-              </span>
-              {!submitting && <ArrowRight className="w-4 h-4" />}
+              {submitting ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>
+                    {mode === 'login'
+                      ? 'Signing In...'
+                      : mode === 'signup'
+                      ? 'Creating Account...'
+                      : 'Sending Link...'}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <span>
+                    {mode === 'login'
+                      ? 'Sign In to FridayTrack'
+                      : mode === 'signup'
+                      ? 'Create Free Account'
+                      : 'Send Reset Link'}
+                  </span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 

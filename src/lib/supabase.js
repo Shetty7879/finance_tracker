@@ -1,11 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Centralized credentials from Vite environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || '';
+// Centralized credentials from Vite environment variables (sanitized of quotes and trailing slashes)
+const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '')
+  .trim()
+  .replace(/^["']|["']$/g, '');
+const supabaseUrl = rawUrl.replace(/\/+$/, '');
+
 const supabaseKey = (
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)?.trim() || '';
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  ''
+)
+  .trim()
+  .replace(/^["']|["']$/g, '');
 
 export const isSupabaseConfigured = () => {
   return Boolean(

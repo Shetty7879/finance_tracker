@@ -16,14 +16,20 @@ export function AuthProvider({ children }) {
     }
 
     // 1. Get initial active session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error fetching session:', error);
-      }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error('Error fetching session:', error);
+        }
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Session retrieval error:', err);
+        setLoading(false);
+      });
 
     // 2. Listen to auth state changes (login, logout, token refresh)
     const {
@@ -42,37 +48,81 @@ export function AuthProvider({ children }) {
   // Sign Up with email & password
   const signUp = async (email, password) => {
     setAuthError(null);
-    if (!supabase) throw new Error('Supabase client is not configured.');
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      setAuthError(error.message);
-      throw error;
+    if (!supabase) {
+      const msg = 'Supabase client is not configured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are set.';
+      setAuthError(msg);
+      throw new Error(msg);
     }
 
-    return data;
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+      });
+
+      if (error) {
+        let userMessage = error.message;
+        if (error.message.includes('User already registered')) {
+          userMessage = 'An account with this email already exists. Please sign in instead.';
+        }
+        setAuthError(userMessage);
+        const enhancedError = new Error(userMessage);
+        enhancedError.originalError = error;
+        throw enhancedError;
+      }
+
+      setAuthError(null);
+      return data;
+    } catch (err) {
+      const msg = err.message?.includes('Failed to fetch')
+        ? 'Network error: Unable to connect to Supabase. Please check your internet connection.'
+        : err.message || 'Account registration failed. Please try again.';
+      setAuthError(msg);
+      throw err;
+    }
   };
 
   // Sign In with email & password
   const signIn = async (email, password) => {
     setAuthError(null);
-    if (!supabase) throw new Error('Supabase client is not configured.');
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setAuthError(error.message);
-      throw error;
+    if (!supabase) {
+      const msg = 'Supabase client is not configured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are set.';
+      setAuthError(msg);
+      throw new Error(msg);
     }
 
-    return data;
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+
+      if (error) {
+        let userMessage = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          userMessage = 'Incorrect email or password. Please check your credentials and try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          userMessage = 'Please verify your email address before signing in.';
+        }
+        setAuthError(userMessage);
+        const enhancedError = new Error(userMessage);
+        enhancedError.originalError = error;
+        throw enhancedError;
+      }
+
+      setAuthError(null);
+      return data;
+    } catch (err) {
+      const msg = err.message?.includes('Failed to fetch')
+        ? 'Network error: Unable to connect to Supabase. Please check your internet connection.'
+        : err.message || 'Authentication failed. Please try again.';
+      setAuthError(msg);
+      throw err;
+    }
   };
 
   // Sign Out
@@ -106,18 +156,33 @@ export function AuthProvider({ children }) {
   // Password Reset Request
   const resetPassword = async (email) => {
     setAuthError(null);
-    if (!supabase) throw new Error('Supabase client is not configured.');
-
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-    });
-
-    if (error) {
-      setAuthError(error.message);
-      throw error;
+    if (!supabase) {
+      const msg = 'Supabase client is not configured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are set.';
+      setAuthError(msg);
+      throw new Error(msg);
     }
 
-    return data;
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        throw error;
+      }
+
+      setAuthError(null);
+      return data;
+    } catch (err) {
+      const msg = err.message?.includes('Failed to fetch')
+        ? 'Network error: Unable to connect to Supabase. Please check your internet connection.'
+        : err.message || 'Failed to send reset link. Please try again.';
+      setAuthError(msg);
+      throw err;
+    }
   };
 
   return (
