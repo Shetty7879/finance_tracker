@@ -134,7 +134,7 @@ export default function AnalyticsView() {
       {/* ==================================================================== */}
       {/* 1. TOP HEADER & DATE RANGE FILTER CONTROLS */}
       {/* ==================================================================== */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-subtle flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-6 shadow-subtle flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         
         {/* Title and date info */}
         <div>
@@ -146,10 +146,13 @@ export default function AnalyticsView() {
               Live Data
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center">
-            <Calendar className="w-3.5 h-3.5 mr-1 text-slate-400" />
-            Active Period: <span className="font-semibold text-slate-700 dark:text-slate-300 ml-1">{rangeInfo.label}</span>
-            <span className="mx-2">•</span>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-1">
+            <span className="flex items-center">
+              <Calendar className="w-3.5 h-3.5 mr-1 text-slate-400" />
+              Active Period:
+            </span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{rangeInfo.label}</span>
+            <span className="text-slate-400 dark:text-slate-500">•</span>
             <span>{filteredExpenses.length} transactions</span>
           </p>
         </div>
@@ -178,7 +181,7 @@ export default function AnalyticsView() {
                     setShowCustomPickers(false);
                   }
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-brand-600 text-white shadow-subtle'
                     : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -194,7 +197,7 @@ export default function AnalyticsView() {
             <button
               onClick={() => handleExportCSV()}
               title="Export report to CSV (Excel)"
-              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300 transition-colors"
+              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300 transition-colors cursor-pointer"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">CSV</span>
@@ -203,7 +206,7 @@ export default function AnalyticsView() {
             <button
               onClick={() => handleExportPDF()}
               title="Export report to PDF"
-              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors shadow-subtle"
+              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors shadow-subtle cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">PDF</span>
@@ -244,93 +247,93 @@ export default function AnalyticsView() {
       {/* ==================================================================== */}
       {/* 2. FINANCIAL SUMMARY CARDS (6 KPIS) */}
       {/* ==================================================================== */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
         
         {/* Card 1: Total Incoming */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
             Total Incoming
           </span>
           <div className="mt-2">
-            <span className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+            <span className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 dark:text-white truncate block">
               {formatINR(summary.totalIncome)}
             </span>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 truncate">
               Deposits & Balance
             </p>
           </div>
         </div>
 
         {/* Card 2: Total Expenses */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
             Total Expenses
           </span>
           <div className="mt-2">
-            <span className="text-lg sm:text-xl font-extrabold text-rose-600 dark:text-rose-400">
+            <span className="text-base sm:text-lg lg:text-xl font-extrabold text-rose-600 dark:text-rose-400 truncate block">
               {formatINR(summary.totalExpenses)}
             </span>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 truncate">
               {filteredExpenses.length} transactions
             </p>
           </div>
         </div>
 
         {/* Card 3: Net Capital Savings */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
             Net Savings
           </span>
           <div className="mt-2">
-            <span className="text-lg sm:text-xl font-extrabold text-brand-600 dark:text-brand-400">
+            <span className="text-base sm:text-lg lg:text-xl font-extrabold text-brand-600 dark:text-brand-400 truncate block">
               {formatINR(summary.netSavings)}
             </span>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 truncate">
               Surplus capital
             </p>
           </div>
         </div>
 
         {/* Card 4: Savings Rate (%) */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
             Savings Rate
           </span>
           <div className="mt-2">
-            <span className="text-lg sm:text-xl font-extrabold text-sky-600 dark:text-sky-400">
+            <span className="text-base sm:text-lg lg:text-xl font-extrabold text-sky-600 dark:text-sky-400 truncate block">
               {summary.savingsRate}%
             </span>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 truncate">
               Target: 20%+
             </p>
           </div>
         </div>
 
         {/* Card 5: Average Daily Spending */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
             Daily Run-Rate
           </span>
           <div className="mt-2">
-            <span className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+            <span className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 dark:text-white truncate block">
               {formatINR(summary.avgDailySpending)}
             </span>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 truncate">
               /day ({summary.daysInPeriod}d)
             </p>
           </div>
         </div>
 
         {/* Card 6: Highest Spending Category */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
             Top Category
           </span>
           <div className="mt-2">
-            <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white truncate block">
+            <span className="text-sm sm:text-base lg:text-lg font-extrabold text-slate-900 dark:text-white truncate block">
               {summary.highestCategory ? summary.highestCategory.category : 'N/A'}
             </span>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 truncate">
               {summary.highestCategory ? `${summary.highestCategory.percentage}% of spend` : 'No expenses'}
             </p>
           </div>
@@ -341,7 +344,7 @@ export default function AnalyticsView() {
       {/* ==================================================================== */}
       {/* 3. INTERACTIVE CHART MODULE WITH VIEW SWITCHER */}
       {/* ==================================================================== */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-premium">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-7 shadow-premium">
         
         {/* Chart Header & View Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 mb-6 border-b border-slate-100 dark:border-slate-800">
@@ -360,11 +363,11 @@ export default function AnalyticsView() {
             </p>
           </div>
 
-          {/* Chart View Switcher Tabs */}
-          <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 self-start sm:self-auto">
+          {/* Chart View Switcher Tabs (Horizontally scrollable on narrow phones) */}
+          <div className="flex items-center overflow-x-auto no-scrollbar max-w-full p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 self-start sm:self-auto flex-shrink-0">
             <button
               onClick={() => setActiveChartTab('donut')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeChartTab === 'donut'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -376,7 +379,7 @@ export default function AnalyticsView() {
 
             <button
               onClick={() => setActiveChartTab('daily')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeChartTab === 'daily'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -388,7 +391,7 @@ export default function AnalyticsView() {
 
             <button
               onClick={() => setActiveChartTab('monthly')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeChartTab === 'monthly'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -400,7 +403,7 @@ export default function AnalyticsView() {
 
             <button
               onClick={() => setActiveChartTab('comparison')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeChartTab === 'comparison'
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -616,38 +619,65 @@ export default function AnalyticsView() {
             No transactions match the selected criteria.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  <th className="pb-3 font-semibold">Date</th>
-                  <th className="pb-3 font-semibold">Category</th>
-                  <th className="pb-3 font-semibold">Account</th>
-                  <th className="pb-3 font-semibold text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {drillDownTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 text-slate-600 dark:text-slate-300 font-medium">
-                      {tx.expense_date || (tx.created_at ? tx.created_at.slice(0, 10) : '')}
-                    </td>
-                    <td className="py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    <th className="pb-3 font-semibold">Date</th>
+                    <th className="pb-3 font-semibold">Category</th>
+                    <th className="pb-3 font-semibold">Account</th>
+                    <th className="pb-3 font-semibold text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  {drillDownTransactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 text-slate-600 dark:text-slate-300 font-medium">
+                        {tx.expense_date || (tx.created_at ? tx.created_at.slice(0, 10) : '')}
+                      </td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {tx.category}
+                        </span>
+                      </td>
+                      <td className="py-3 text-slate-500 dark:text-slate-400 font-medium">
+                        {tx.account_name || tx.accounts?.account_name || 'Bank Account'}
+                      </td>
+                      <td className="py-3 text-right font-bold text-slate-900 dark:text-white">
+                        {formatINR(tx.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List View */}
+            <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {drillDownTransactions.map((tx) => (
+                <div key={tx.id} className="py-3 flex items-center justify-between">
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         {tx.category}
                       </span>
-                    </td>
-                    <td className="py-3 text-slate-500 dark:text-slate-400 font-medium">
-                      {tx.account_name || tx.accounts?.account_name || 'Bank Account'}
-                    </td>
-                    <td className="py-3 text-right font-bold text-slate-900 dark:text-white">
-                      {formatINR(tx.amount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                        {tx.account_name || tx.accounts?.account_name || 'Bank Account'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 block mt-0.5">
+                      {tx.expense_date || (tx.created_at ? tx.created_at.slice(0, 10) : '')}
+                    </span>
+                  </div>
+                  <div className="font-bold text-sm text-slate-900 dark:text-white whitespace-nowrap">
+                    {formatINR(tx.amount)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
       </div>

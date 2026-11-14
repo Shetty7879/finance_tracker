@@ -83,11 +83,11 @@ export default function MonthlyTrendChart({ monthlyTrends = [] }) {
         </span>
       </div>
 
-      {/* SVG Chart */}
-      <div className="w-full overflow-x-auto">
+      {/* SVG Chart with responsive horizontal scroll on mobile */}
+      <div className="w-full overflow-x-auto pb-2 -mx-1 px-1">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-56 select-none"
+          className="w-full h-44 sm:h-56 min-w-[320px] sm:min-w-0 select-none"
         >
           <defs>
             <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">

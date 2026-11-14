@@ -60,7 +60,7 @@ function DashboardView() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         
         {/* Useful error banner if database migration or connection issues occur */}
         {financeError && (
@@ -109,7 +109,7 @@ function DashboardView() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-6 text-center text-xs text-slate-400 dark:text-slate-500 pb-20 sm:pb-6">
+      <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-6 text-center text-xs text-slate-400 dark:text-slate-500 pb-24 sm:pb-6">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">FridayTrack</span>
@@ -122,11 +122,12 @@ function DashboardView() {
         </div>
       </footer>
 
-      {/* Mobile Bottom Navigation Bar (Thumb-friendly on mobile Chrome / iOS) */}
-      <div className="fixed bottom-0 inset-x-0 sm:hidden z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 px-8 py-2 flex items-center justify-between shadow-premium">
+      {/* Mobile Bottom Navigation Bar (Thumb-friendly with iOS/Android Safe Area Support) */}
+      <div className="fixed bottom-0 inset-x-0 sm:hidden z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 px-6 sm:px-8 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] flex items-center justify-between shadow-premium">
         <button
+          type="button"
           onClick={() => setCurrentView('dashboard')}
-          className={`flex flex-col items-center space-y-1 transition-colors ${
+          className={`flex flex-col items-center space-y-1 transition-colors min-w-[56px] py-1 cursor-pointer ${
             currentView === 'dashboard'
               ? 'text-brand-600 dark:text-brand-400 font-bold'
               : 'text-slate-400 dark:text-slate-500'
@@ -138,16 +139,18 @@ function DashboardView() {
 
         {/* Center Quick Add Expense Button */}
         <button
+          type="button"
           onClick={() => setIsAddExpenseOpen(true)}
-          className="flex items-center justify-center w-11 h-11 -mt-5 rounded-full bg-brand-600 active:bg-brand-700 text-white shadow-lg shadow-brand-600/30 active:scale-95 transition-transform"
+          className="flex items-center justify-center w-12 h-12 -mt-5 rounded-full bg-brand-600 active:bg-brand-700 text-white shadow-lg shadow-brand-600/30 active:scale-95 transition-transform cursor-pointer"
           aria-label="Add Expense"
         >
           <Plus className="w-6 h-6" />
         </button>
 
         <button
+          type="button"
           onClick={() => setCurrentView('analytics')}
-          className={`flex flex-col items-center space-y-1 transition-colors ${
+          className={`flex flex-col items-center space-y-1 transition-colors min-w-[56px] py-1 cursor-pointer ${
             currentView === 'analytics'
               ? 'text-brand-600 dark:text-brand-400 font-bold'
               : 'text-slate-400 dark:text-slate-500'

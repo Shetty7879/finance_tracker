@@ -48,12 +48,10 @@ export default function DonutChart({
     <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
       
       {/* SVG Donut */}
-      <div className="relative flex items-center justify-center flex-shrink-0">
+      <div className="relative flex items-center justify-center flex-shrink-0 w-[210px] sm:w-[260px] h-[210px] sm:h-[260px]">
         <svg
-          width={size}
-          height={size}
           viewBox={`0 0 ${size} ${size}`}
-          className="transform -rotate-90"
+          className="w-full h-full transform -rotate-90"
         >
           {/* Background circle track */}
           <circle

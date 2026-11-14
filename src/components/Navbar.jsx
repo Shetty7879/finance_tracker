@@ -10,17 +10,17 @@ export default function Navbar({ onOpenAddAccount, onOpenAddExpense, currentView
 
   return (
     <header className="sticky top-0 z-30 w-full backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-20">
           
           {/* Logo & Brand */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white shadow-glow">
-              <WalletCards className="w-6 h-6" />
+          <div className="flex items-center space-x-2.5 sm:space-x-3">
+            <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white shadow-glow flex-shrink-0">
+              <WalletCards className="w-4 h-4 sm:w-6 sm:h-6" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                <span className="font-extrabold text-lg sm:text-2xl tracking-tight bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
                   Friday<span className="text-brand-500">Track</span>
                 </span>
                 
@@ -32,7 +32,7 @@ export default function Navbar({ onOpenAddAccount, onOpenAddExpense, currentView
                   </span>
                 )}
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 hidden xs:block">
+              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hidden xs:block">
                 Personal finance & bank accounts
               </p>
             </div>
@@ -70,19 +70,21 @@ export default function Navbar({ onOpenAddAccount, onOpenAddExpense, currentView
           )}
 
           {/* Right Action bar: User Session + Watermelon Theme Switcher + Add Expense */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-1.5 sm:space-x-3">
             
             {/* Watermelon Switch Mode Component */}
             <div className="flex items-center">
-              <SwitchMode height={34} />
+              <SwitchMode height={32} />
             </div>
 
-            {/* Quick Add Expense button */}
+            {/* Quick Add Expense button - compact on small mobile */}
             <button
               onClick={onOpenAddExpense}
-              className="inline-flex items-center justify-center px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-brand-600 hover:bg-brand-500 active:scale-[0.98] transition-all shadow-subtle hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+              title="Add Expense"
+              className="inline-flex items-center justify-center p-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-brand-600 hover:bg-brand-500 active:scale-[0.98] transition-all shadow-subtle hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
             >
-              <span className="text-base font-bold mr-1 leading-none">+</span> Add Expense
+              <span className="text-base font-bold sm:mr-1 leading-none">+</span>
+              <span className="hidden sm:inline">Add Expense</span>
             </button>
 
             {/* User Session & Logout */}
@@ -92,7 +94,7 @@ export default function Navbar({ onOpenAddAccount, onOpenAddExpense, currentView
                   type="button"
                   onClick={signOut}
                   title="Sign out"
-                  className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                  className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="sr-only">Sign out</span>
