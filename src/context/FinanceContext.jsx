@@ -19,12 +19,13 @@ export function FinanceProvider({ children }) {
   }
 
   const [localTheme, setLocalTheme] = useState(() => {
-    return (typeof window !== 'undefined' ? localStorage.getItem(THEME_STORAGE_KEY) : 'system') || 'system';
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(THEME_STORAGE_KEY) : 'dark';
+    return saved === 'light' ? 'light' : 'dark';
   });
 
   const theme = nextThemeObj?.theme ?? localTheme;
   const setTheme = nextThemeObj?.setTheme ?? setLocalTheme;
-  const resolvedTheme = nextThemeObj?.resolvedTheme ?? (theme === 'system' ? 'light' : theme);
+  const resolvedTheme = nextThemeObj?.resolvedTheme ?? (theme === 'dark' ? 'dark' : 'light');
 
   // Database-backed states
   const [accounts, setAccounts] = useState([]);
@@ -38,36 +39,13 @@ export function FinanceProvider({ children }) {
     if (nextThemeObj) return; // next-themes handles DOM class and storage automatically
 
     const root = document.documentElement;
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    const activeTheme = theme === 'light' ? 'light' : 'dark';
+    localStorage.setItem(THEME_STORAGE_KEY, activeTheme);
 
-    const applyTheme = () => {
-      if (theme === 'dark') {
-        root.classList.add('dark');
-      } else if (theme === 'light') {
-        root.classList.remove('dark');
-      } else {
-        const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (isSystemDark) {
-          root.classList.add('dark');
-        } else {
-          root.classList.remove('dark');
-        }
-      }
-    };
-
-    applyTheme();
-
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const listener = (e) => {
-        if (e.matches) {
-          root.classList.add('dark');
-        } else {
-          root.classList.remove('dark');
-        }
-      };
-      mediaQuery.addEventListener('change', listener);
-      return () => mediaQuery.removeEventListener('change', listener);
+    if (activeTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
     }
   }, [theme, nextThemeObj]);
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { useAuth } from '../context/AuthContext';
-import { WalletCards, LogOut } from 'lucide-react';
+import { WalletCards, LogOut, LayoutDashboard, BarChart3 } from 'lucide-react';
 import SwitchMode from './switch-mode';
 
-export default function Navbar({ onOpenAddAccount, onOpenAddExpense }) {
+export default function Navbar({ onOpenAddAccount, onOpenAddExpense, currentView = 'dashboard', onViewChange }) {
   const { syncStatus } = useFinance();
   const { user, signOut } = useAuth();
 
@@ -38,6 +38,37 @@ export default function Navbar({ onOpenAddAccount, onOpenAddExpense }) {
             </div>
           </div>
 
+          {/* Desktop Navigation Tabs */}
+          {user && (
+            <nav className="hidden md:flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 shadow-inner">
+              <button
+                type="button"
+                onClick={() => onViewChange && onViewChange('dashboard')}
+                className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  currentView === 'dashboard'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onViewChange && onViewChange('analytics')}
+                className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  currentView === 'analytics'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Analytics & Reports</span>
+              </button>
+            </nav>
+          )}
+
           {/* Right Action bar: User Session + Watermelon Theme Switcher + Add Expense */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             
@@ -57,11 +88,6 @@ export default function Navbar({ onOpenAddAccount, onOpenAddExpense }) {
             {/* User Session & Logout */}
             {user && (
               <div className="flex items-center pl-1 sm:pl-2 border-l border-slate-200 dark:border-slate-800">
-                <div className="hidden lg:block mr-2 text-right">
-                  <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-[130px]" title={user.email}>
-                    {user.email}
-                  </div>
-                </div>
                 <button
                   type="button"
                   onClick={signOut}

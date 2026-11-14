@@ -7,8 +7,6 @@ import {
   IoMoonOutline,
   IoSunny,
   IoSunnyOutline,
-  IoDesktop,
-  IoDesktopOutline,
 } from "react-icons/io5";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -16,7 +14,7 @@ import { cn } from "@/lib/utils";
 export const SwitchMode = ({
   width,
   height = 34,
-  modes = ["light", "system", "dark"],
+  modes = ["light", "dark"],
   darkColor = "#0f172a", // slate-900
   lightColor = "#f1f5f9", // slate-100
   knobDarkColor = "#1e293b", // slate-800
@@ -30,7 +28,11 @@ export const SwitchMode = ({
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // If previously saved theme in localStorage was 'system', normalize to light or dark
+    if (theme === "system") {
+      setTheme(resolvedTheme === "dark" ? "dark" : "light");
+    }
+  }, [theme, resolvedTheme, setTheme]);
 
   const totalSegments = modes.length;
   // Calculate segment width so knob is perfectly proportioned
@@ -49,11 +51,11 @@ export const SwitchMode = ({
     );
   }
 
-  const isDark = resolvedTheme === "dark";
+  const isDark = resolvedTheme === "dark" || theme === "dark";
   const iconSize = Math.max(14, Math.round(height * 0.44));
 
   const getActiveIndex = () => {
-    const current = theme || "system";
+    const current = (theme === "dark" || (!theme && isDark)) ? "dark" : "light";
     const idx = modes.indexOf(current);
     return idx >= 0 ? idx : 0;
   };
@@ -92,7 +94,7 @@ export const SwitchMode = ({
 
       {/* MODE SEGMENTS */}
       {modes.map((mode) => {
-        const isActive = (theme || "system") === mode;
+        const isActive = mode === "dark" ? isDark : !isDark;
 
         let IconActive = IoSunny;
         let IconInactive = IoSunnyOutline;
@@ -104,11 +106,6 @@ export const SwitchMode = ({
           IconInactive = IoMoonOutline;
           activeColor = "#38bdf8"; // sky-400
           label = "Dark mode";
-        } else if (mode === "system") {
-          IconActive = IoDesktop;
-          IconInactive = IoDesktopOutline;
-          activeColor = "#10b981"; // emerald-500 / brand-500
-          label = "System preference";
         }
 
         return (
@@ -125,7 +122,7 @@ export const SwitchMode = ({
             <motion.div
               animate={{
                 scale: isActive ? 1.08 : 0.95,
-                rotate: isActive ? (mode === "dark" ? -8 : mode === "light" ? 12 : 0) : 0,
+                rotate: isActive ? (mode === "dark" ? -8 : 12) : 0,
               }}
               transition={{ duration: 0.2 }}
             >

@@ -6,14 +6,18 @@ import Navbar from './components/Navbar';
 import DashboardCards from './components/DashboardCards';
 import BankAccountsSection from './components/BankAccountsSection';
 import RecentExpensesSection from './components/RecentExpensesSection';
+import AnalyticsView from './components/AnalyticsView';
 import AddAccountModal from './components/AddAccountModal';
 import AddExpenseModal from './components/AddExpenseModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import AuthView from './components/AuthView';
-import { Plus, WalletCards, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, WalletCards, Loader2, AlertTriangle, LayoutDashboard, BarChart3 } from 'lucide-react';
 
 function DashboardView() {
   const { deleteAccount, deleteExpense, error: financeError } = useFinance();
+
+  // Navigation View: 'dashboard' | 'analytics'
+  const [currentView, setCurrentView] = useState('dashboard');
 
   // Modals visibility state
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
@@ -51,6 +55,8 @@ function DashboardView() {
       <Navbar
         onOpenAddAccount={() => setIsAddAccountOpen(true)}
         onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+        currentView={currentView}
+        onViewChange={setCurrentView}
       />
 
       {/* Main Content Area */}
@@ -75,28 +81,35 @@ function DashboardView() {
           </div>
         )}
 
-        {/* 1. Dashboard Overview Cards */}
-        <DashboardCards
-          onOpenAddAccount={() => setIsAddAccountOpen(true)}
-          onOpenAddExpense={() => setIsAddExpenseOpen(true)}
-        />
+        {/* View Switcher: Dashboard View vs Analytics & Reports View */}
+        {currentView === 'dashboard' ? (
+          <>
+            {/* 1. Dashboard Overview Cards */}
+            <DashboardCards
+              onOpenAddAccount={() => setIsAddAccountOpen(true)}
+              onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+            />
 
-        {/* 2. Bank Accounts Section */}
-        <BankAccountsSection
-          onOpenAddAccount={() => setIsAddAccountOpen(true)}
-          onRequestDeleteAccount={handleRequestDeleteAccount}
-        />
+            {/* 2. Bank Accounts Section */}
+            <BankAccountsSection
+              onOpenAddAccount={() => setIsAddAccountOpen(true)}
+              onRequestDeleteAccount={handleRequestDeleteAccount}
+            />
 
-        {/* 3. Recent Expenses Section */}
-        <RecentExpensesSection
-          onOpenAddExpense={() => setIsAddExpenseOpen(true)}
-          onRequestDeleteExpense={handleRequestDeleteExpense}
-        />
+            {/* 3. Recent Expenses Section */}
+            <RecentExpensesSection
+              onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+              onRequestDeleteExpense={handleRequestDeleteExpense}
+            />
+          </>
+        ) : (
+          <AnalyticsView />
+        )}
 
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+      <footer className="w-full border-t border-slate-200/80 dark:border-slate-800/80 py-6 text-center text-xs text-slate-400 dark:text-slate-500 pb-20 sm:pb-6">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
             <span className="font-semibold text-slate-700 dark:text-slate-300">FridayTrack</span>
@@ -109,14 +122,39 @@ function DashboardView() {
         </div>
       </footer>
 
-      {/* Mobile Floating Action Button (FAB) */}
-      <div className="fixed bottom-5 right-5 sm:hidden z-40">
+      {/* Mobile Bottom Navigation Bar (Thumb-friendly on mobile Chrome / iOS) */}
+      <div className="fixed bottom-0 inset-x-0 sm:hidden z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 px-8 py-2 flex items-center justify-between shadow-premium">
+        <button
+          onClick={() => setCurrentView('dashboard')}
+          className={`flex flex-col items-center space-y-1 transition-colors ${
+            currentView === 'dashboard'
+              ? 'text-brand-600 dark:text-brand-400 font-bold'
+              : 'text-slate-400 dark:text-slate-500'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5" />
+          <span className="text-[10px]">Dashboard</span>
+        </button>
+
+        {/* Center Quick Add Expense Button */}
         <button
           onClick={() => setIsAddExpenseOpen(true)}
-          className="flex items-center justify-center w-14 h-14 rounded-full bg-brand-600 active:bg-brand-700 text-white shadow-xl shadow-brand-600/30 active:scale-95 transition-transform"
+          className="flex items-center justify-center w-11 h-11 -mt-5 rounded-full bg-brand-600 active:bg-brand-700 text-white shadow-lg shadow-brand-600/30 active:scale-95 transition-transform"
           aria-label="Add Expense"
         >
-          <Plus className="w-7 h-7" />
+          <Plus className="w-6 h-6" />
+        </button>
+
+        <button
+          onClick={() => setCurrentView('analytics')}
+          className={`flex flex-col items-center space-y-1 transition-colors ${
+            currentView === 'analytics'
+              ? 'text-brand-600 dark:text-brand-400 font-bold'
+              : 'text-slate-400 dark:text-slate-500'
+          }`}
+        >
+          <BarChart3 className="w-5 h-5" />
+          <span className="text-[10px]">Analytics</span>
         </button>
       </div>
 
@@ -174,8 +212,8 @@ export default function App() {
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem={true}
+      defaultTheme="dark"
+      enableSystem={false}
       storageKey="fridaytrack_theme_v1"
     >
       <AuthProvider>
