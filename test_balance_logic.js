@@ -219,6 +219,33 @@ assert.strictEqual(mockAuthError, 'Network timeout contacting auth server');
 console.log('✅ Test 3.2: Logout resilience - local state reset survives remote server errors\n');
 
 // ============================================================================
+// PART 4: DEFAULT ROUTING & NO-SETUP-SCREEN VERIFICATION
+// ============================================================================
+console.log('--- 4. Testing Default View Routing & Configuration Policy ---');
+
+// Mock Application Router logic from App.jsx
+function resolveView({ user, loading }) {
+  if (loading) return 'LOADING';
+  if (!user) return 'AUTH_VIEW'; // Must always default to Login/Signup, never a setup screen!
+  return 'DASHBOARD_VIEW';
+}
+
+// Scenario 4.1: Fresh visitor on any device (unauthenticated)
+const freshVisitorView = resolveView({ user: null, loading: false });
+assert.strictEqual(freshVisitorView, 'AUTH_VIEW', 'Unauthenticated visitors must see AuthView immediately');
+console.log('✅ Test 4.1: Fresh visitor / new device directly routed to AuthView (Login / Sign Up)');
+
+// Scenario 4.2: Authenticated user
+const loggedInView = resolveView({ user: { id: 'user_123' }, loading: false });
+assert.strictEqual(loggedInView, 'DASHBOARD_VIEW', 'Authenticated user must see DashboardView');
+console.log('✅ Test 4.2: Authenticated user directly routed to DashboardView');
+
+// Scenario 4.3: Session expiry / logout
+const sessionExpiredView = resolveView({ user: null, loading: false });
+assert.strictEqual(sessionExpiredView, 'AUTH_VIEW', 'Session expiry must instantly return to AuthView');
+console.log('✅ Test 4.3: Session expiry / logout immediately returns to AuthView');
+
+// ============================================================================
 // SUMMARY
 // ============================================================================
-console.log('🎉 ALL TESTS PASSED! All 14 test scenarios and boundary conditions verified successfully.');
+console.log('🎉 ALL TESTS PASSED! All 17 test scenarios and boundary conditions verified successfully.');

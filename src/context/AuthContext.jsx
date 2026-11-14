@@ -103,6 +103,23 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Password Reset Request
+  const resetPassword = async (email) => {
+    setAuthError(null);
+    if (!supabase) throw new Error('Supabase client is not configured.');
+
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+    });
+
+    if (error) {
+      setAuthError(error.message);
+      throw error;
+    }
+
+    return data;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -114,6 +131,7 @@ export function AuthProvider({ children }) {
         signUp,
         signIn,
         signOut,
+        resetPassword,
         isConfigured: isSupabaseConfigured(),
       }}
     >

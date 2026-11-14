@@ -9,7 +9,6 @@ import AddAccountModal from './components/AddAccountModal';
 import AddExpenseModal from './components/AddExpenseModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import AuthView from './components/AuthView';
-import SupabaseSetupBanner from './components/SupabaseSetupBanner';
 import { Plus, WalletCards, Loader2, AlertTriangle } from 'lucide-react';
 
 function DashboardView() {
@@ -144,12 +143,7 @@ function DashboardView() {
 }
 
 function MainContent() {
-  const { user, loading, isConfigured } = useAuth();
-
-  // If Supabase credentials are missing or unconfigured
-  if (!isConfigured) {
-    return <SupabaseSetupBanner />;
-  }
+  const { user, loading } = useAuth();
 
   // Loading initial auth state
   if (loading) {
@@ -166,7 +160,7 @@ function MainContent() {
     );
   }
 
-  // User is not signed in -> show AuthView
+  // User is not signed in -> show AuthView (Login / Sign Up / Forgot Password) by default
   if (!user) {
     return <AuthView />;
   }
